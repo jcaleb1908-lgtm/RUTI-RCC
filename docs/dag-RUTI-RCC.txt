@@ -1,0 +1,30 @@
+// Causal diagram from protocol v0.1 section 9.1 (dagitty syntax). Paste at dagitty.net. Drawn before any analysis (M22).
+dag {
+rUTI [exposure]
+RCC_dx [outcome]
+RCC_true [latent]
+RCC_preclinical [latent]
+Age -> { rUTI RCC_true HTN0 DM0 CKD0 Visits0 }
+Sex -> { rUTI RCC_true Visits0 Imaging0 }
+SES -> { Smoking Obesity Visits0 Imaging0 rUTI }
+Ethnicity -> { SES Visits0 Imaging0 Abx_win }
+Smoking -> { RCC_true Visits0 }
+Obesity -> { RCC_true DM0 HTN0 rUTI }
+HTN0 -> RCC_true
+DM0 -> { rUTI RCC_true Visits0 }
+CKD0 -> { rUTI RCC_true Abx_win Imaging0 }
+Stones0 -> { rUTI Imaging0 RCC_true }
+Immuno0 -> { rUTI RCC_true }
+PriorUTI -> { rUTI Abx_prior }
+Abx_prior -> RCC_true
+Visits0 -> { rUTI Imaging0 RCC_dx }
+Imaging0 -> RCC_dx
+Site -> { rUTI Abx_win Imaging1 RCC_dx }
+Calendar -> { rUTI Abx_win Imaging1 RCC_dx }
+rUTI -> { Abx_win CKD1 Imaging1 RCC_true }
+Abx_win -> RCC_true
+CKD1 -> RCC_true
+Imaging1 -> RCC_dx
+RCC_true -> RCC_dx
+RCC_preclinical -> { rUTI RCC_dx }
+}
