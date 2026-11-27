@@ -1,0 +1,8 @@
+# participant-level and run artefacts never enter git (ANALYSIS-STANDARD §2, M32)
+*_INTERNAL*
+*person_id*
+runs/
+*.parquet
+*.pkl
+__pycache__/
+.ipynb_checkpoints/
