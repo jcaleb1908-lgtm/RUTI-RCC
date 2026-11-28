@@ -17,6 +17,7 @@ G = C.load_state("drug_glossary", internal=False)
 D["rcc_drug_starts"] = D["drug"].merge(G.loc[G["rcc_drug"], ["concept_id"]], left_on="drug_concept_id",
                                        right_on="concept_id")[["person_id", "start_date"]].rename(columns={"start_date": "date"})
 SPECS = {"Q1": B.default_spec("Q1"), "Q2": B.default_spec("Q2")}
+D_RCC_SENS = C.load_state("rcc_without_nephroureterectomy")
 EXPO = {"Q1": "q1_group", "Q2": "q2_class"}
 
 
@@ -64,10 +65,16 @@ def run_q(qn):
                             "share_t0_before_enrollment": float((F["years_t0_to_enrollment"] > 0).mean())}])
         C.show("timing", f"{qn} follow-up and timing (all analysed persons; AL5, AL6)", fu, counts=[])
         # BLIND totals: events and person-years over the whole cohort, never by exposure
+        # Sensitivity: rebuild with nephroureterectomy not confirming; report only how many events depend on it
+        # (masked when 1-20, so the second total can never be derived).
+        F_s, _ = B.build(dict(D, rcc=D_RCC_SENS), SPECS[qn])
+        lost = int(F["event"].sum()) - int(F_s["event"].sum())
         tot = pd.DataFrame([{"n": len(F), "events": int(F["event"].sum()), "person_years": float(F["t_years"].sum()),
-                             "deaths_competing": int(F["death_competing"].sum())}])
+                             "deaths_competing": int(F["death_competing"].sum()),
+                             "events_lost_without_nephroureterectomy": lost if lost >= 0 else np.nan}])
         C.show("events_total", f"{qn} RCC events in the analysed cohort, total only (blind)", tot,
-               counts=["n", "events", "deaths_competing"])
+               counts=["n", "events", "deaths_competing", "events_lost_without_nephroureterectomy"],
+               note="events_lost_without_nephroureterectomy = confirmed events that need a nephroureterectomy to be confirmed.")
         C.CFG["footnote_extra"] = prev
     return fn
 

@@ -144,7 +144,8 @@ DX = {
                                  rx=r"calcul|stone|pyelonephritis|pyonephrosis|abscess|tubulo"),
     # P§10, D14 negative-control outcomes (+ alternatives, computed but not primary)
     "NCO_ADRENAL_BENIGN": dict(role="N", icd10=["D35.00", "D35.01", "D35.02"], icd9=["227.0"], rx=r"adrenal"),
-    "NCO_CATARACT": dict(role="N", icd10=["H25*"], icd9=["366.1*"], rx=r"cataract"),
+    # Only codes whose ICD title is a cataract: 366.11 "Pseudoexfoliation of lens capsule" is not (decision 2026-11-28).
+    "NCO_CATARACT": dict(role="N", icd10=["H25*"], icd9=["366.1*"], icd9_exclude=["366.11"], rx=r"cataract|nuclear sclerosis"),
     "NCO_MELANOMA": dict(role="N", icd10=["C43*"], icd9=["172*"], rx=r"melanoma"),
 }
 
@@ -152,9 +153,13 @@ DX = {
 # PROCEDURES (CPT4 / ICD-10-PCS / ICD-9 procedure source codes), P§4, §5.3, §8.3, §9.4, Appendix A.2
 # ---------------------------------------------------------------------------------------------------------
 PX = {
-    "NEPHRECTOMY": dict(cpt=["50220", "50225", "50230", "50234", "50236", "50545", "50546", "50548"],
+    "NEPHRECTOMY": dict(cpt=["50220", "50225", "50230", "50545", "50546"],
                         pcs=["0TT00ZZ", "0TT04ZZ", "0TT04ZG", "0TT10ZZ", "0TT14ZZ", "0TT14ZG", "0TT20ZZ", "0TT24ZZ", "0TT24ZG"],
-                        icd9p=["55.51", "55.52", "55.54"], rx=r"nephrectomy|kidney|resection"),
+                        icd9p=["55.52", "55.54"], rx=r"nephrectomy|kidney|resection"),
+    # Nephroureterectomy (kidney + whole ureter; mostly for renal pelvis / ureter cancer). Confirms RCC in the primary
+    # analysis; a sensitivity run drops it (decision 2026-11-28). ICD-10-PCS has no single code for it.
+    "NEPHROURETERECTOMY": dict(cpt=["50234", "50236", "50548"], pcs=[], icd9p=["55.51"],
+                               rx=r"nephrectomy|nephroureterectomy|ureterectomy"),
     "PARTIAL_NEPHRECTOMY": dict(cpt=["50240", "50543"], pcs=["0TB00ZZ", "0TB03ZZ", "0TB04ZZ", "0TB10ZZ", "0TB13ZZ", "0TB14ZZ"],
                                 icd9p=["55.4"], rx=r"nephrectomy|kidney|excision"),
     "RENAL_ABLATION": dict(cpt=["50250", "50542", "50592", "50593"], pcs=["0T500ZZ", "0T503ZZ", "0T504ZZ", "0T510ZZ", "0T513ZZ", "0T514ZZ"],
@@ -172,7 +177,8 @@ PX = {
     "CYSTOSCOPY": dict(cpt=["52000"], pcs=[], icd9p=[], rx=r"cystourethroscopy|cystoscop"),
 }
 # Kidney-cancer-confirming procedures (P§8.3: biopsy supports the date but never confirms alone)
-CONFIRMING_PX = ["NEPHRECTOMY", "PARTIAL_NEPHRECTOMY", "RENAL_ABLATION"]
+CONFIRMING_PX = ["NEPHRECTOMY", "NEPHROURETERECTOMY", "PARTIAL_NEPHRECTOMY", "RENAL_ABLATION"]
+CONFIRMING_PX_SENS = [k for k in CONFIRMING_PX if k != "NEPHROURETERECTOMY"]   # sensitivity: without nephroureterectomy
 
 # ---------------------------------------------------------------------------------------------------------
 # LABS (LOINC codes; name-checked in F00), P§4, §4.1, §9.4
@@ -256,21 +262,22 @@ CROSSWALKS = {          # answer concept_code -> level; unmatched answers are pr
                  "WhatRaceEthnicity_Hispanic": "Hispanic", "WhatRaceEthnicity_Asian": "Asian",
                  "WhatRaceEthnicity_AIAN": "AIAN", "WhatRaceEthnicity_NHPI": "NHPI", "WhatRaceEthnicity_MENA": "MENA",
                  "WhatRaceEthnicity_RaceEthnicityNoneOfThese": "Other", "PMI_Skip": "Not answered",
-                 "PMI_PreferNotToAnswer": "Not answered"},
+                 "PMI_PreferNotToAnswer": "Not answered", "PMI_DontKnow": "Not answered"},
     "sex_at_birth": {"SexAtBirth_Male": "Male", "SexAtBirth_Female": "Female", "SexAtBirth_Intersex": "Other",
                      "SexAtBirth_SexAtBirthNoneOfThese": "Other", "PMI_Skip": "Not answered",
-                     "PMI_PreferNotToAnswer": "Not answered"},
-    # Answer codes confirmed in the 2026-11-28 F01.6 inventory. Groupings are a proposal (O10).
+                     "PMI_PreferNotToAnswer": "Not answered", "PMI_DontKnow": "Not answered"},
+    # Answer codes confirmed in the 2026-11-28 F01.6 inventory; groupings approved 2026-11-28. Every survey question:
+    # skipped, prefer not to answer and don't know = "Not answered".
     "education": {"HighestGrade_NeverAttended": "Less than high school", "HighestGrade_OneThroughFour": "Less than high school",
                   "HighestGrade_FiveThroughEight": "Less than high school",
                   "HighestGrade_NineThroughEleven": "Less than high school",
                   "HighestGrade_TwelveOrGED": "High school or GED", "HighestGrade_CollegeOnetoThree": "Some college",
                   "HighestGrade_CollegeGraduate": "College graduate", "HighestGrade_AdvancedDegree": "Advanced degree",
-                  "PMI_Skip": "Not answered", "PMI_PreferNotToAnswer": "Not answered"},
+                  "PMI_Skip": "Not answered", "PMI_PreferNotToAnswer": "Not answered", "PMI_DontKnow": "Not answered"},
     "income": {"AnnualIncome_less10k": "<25k", "AnnualIncome_10k25k": "<25k", "AnnualIncome_25k35k": "25-50k",
                "AnnualIncome_35k50k": "25-50k", "AnnualIncome_50k75k": "50-100k", "AnnualIncome_75k100k": "50-100k",
                "AnnualIncome_100k150k": "100-200k", "AnnualIncome_150k200k": "100-200k", "AnnualIncome_more200k": ">=200k",
-               "PMI_Skip": "Not answered", "PMI_PreferNotToAnswer": "Not answered"},
+               "PMI_Skip": "Not answered", "PMI_PreferNotToAnswer": "Not answered", "PMI_DontKnow": "Not answered"},
 }
 SKIP_CODES = ["PMI_Skip", "PMI_PreferNotToAnswer", "PMI_DontKnow"]     # kept as "Not answered" (M9)
 PR_ZIP3 = ["006", "007", "009"]                                        # P§11.1 [UNCONFIRMED against USPS]
