@@ -94,6 +94,9 @@ def p_outcome():
     rd = DRUG.merge(G.loc[G["rcc_drug"], ["concept_id"]], left_on="drug_concept_id", right_on="concept_id")[["person_id", "start_date"]]
     O = R.rcc_outcome(DX, PX, rd.rename(columns={"start_date": "date"}))
     C.save_state(O, "rcc")
+    # Sensitivity (decision 2026-11-28): nephroureterectomy does not confirm. F04 reports how many events depend on it.
+    C.save_state(R.rcc_outcome(DX, PX, rd.rename(columns={"start_date": "date"}), confirming=K.CONFIRMING_PX_SENS),
+                 "rcc_without_nephroureterectomy")
     t = O.groupby(["level", "confirm_route"]).size().rename("n_persons").reset_index()
     C.show("6", "Persons with any RCC code, by level and confirmation route (P§13 F1; candidates, all dates)", t,
            counts=["n_persons"], group_cols=[])

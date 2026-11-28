@@ -89,14 +89,14 @@ C.part("4 drug concept sets", p_drugs)
 
 
 def p_appendix_d():
-    """Appendix D sheet, one row per definition; builder and checker initials are filled by hand."""
+    """Appendix D sheet, one row per definition. Name-check decisions are recorded in the README (O#), not here."""
     S = C.load_state("code_sets", internal=False)
     rows = []
     for key, g in S.groupby("set_key"):
         rows.append({"definition": f"{key} {K.PIPELINE_VERSION}", "starting_codes": len(g),
                      "icd9_codes": int(g["era"].eq("ICD-9").sum()), "icd10_codes": int(g["era"].eq("ICD-10").sum()),
-                     "name_check_failures": int((~g["name_ok"]).sum()), "wrong_concept_removed": "", "checked_by": ""})
-    C.show("11", "Appendix D concept-set check sheet (fill the last two columns by hand)", pd.DataFrame(rows), counts=[])
+                     "name_check_failures": int((~g["name_ok"]).sum())})
+    C.show("11", "Appendix D concept-set check sheet", pd.DataFrame(rows), counts=[])
 C.part("5 Appendix D sheet", p_appendix_d)
 C.end()
 ##### END F00 #####

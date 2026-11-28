@@ -14,13 +14,13 @@ Rules for this file
 """
 
 PROJECT = "RUTI-RCC"
-PIPELINE_VERSION = "RUTI-RCC-2026.11.27-v0.1"      # protocol v0.1 defaults, not yet PI-signed
-PROTOCOL_VERSION = "Pre-cohort protocol v0.1 (2026-11-19), unsigned"
+PIPELINE_VERSION = "RUTI-RCC-2026.11.28-v0.2"      # protocol v0.1 decisions, PI-approved 2026-11-28
+PROTOCOL_VERSION = "Pre-cohort protocol v0.1 (2026-11-19, revised 2026-11-28); D1-D21 PI-approved 2026-11-28"
 CDR_EXPECTED = "C2025Q4R6"                         # P§14: v9 Controlled Tier; data through 2025-01-01
 CDR_CUTOFF = "2025-01-01"                          # M17: every date checked against it
 
 # ---------------------------------------------------------------------------------------------------------
-# PI DECISIONS (P§16). Defaults = the protocol's "Proposed". Change only through AMENDMENTS (after signature).
+# PI DECISIONS (P§16). The protocol's "Proposed" values, approved by the PI on 2026-11-28. Change only by AMENDMENT.
 # ---------------------------------------------------------------------------------------------------------
 DECISIONS = {
     "D2_q1_time_zero": "landmark_365",          # alt: "sequential_trials", "time_varying"
@@ -144,7 +144,8 @@ DX = {
                                  rx=r"calcul|stone|pyelonephritis|pyonephrosis|abscess|tubulo"),
     # P§10, D14 negative-control outcomes (+ alternatives, computed but not primary)
     "NCO_ADRENAL_BENIGN": dict(role="N", icd10=["D35.00", "D35.01", "D35.02"], icd9=["227.0"], rx=r"adrenal"),
-    "NCO_CATARACT": dict(role="N", icd10=["H25*"], icd9=["366.1*"], rx=r"cataract"),
+    # Only codes whose ICD title is a cataract: 366.11 "Pseudoexfoliation of lens capsule" is not (decision 2026-11-28).
+    "NCO_CATARACT": dict(role="N", icd10=["H25*"], icd9=["366.1*"], icd9_exclude=["366.11"], rx=r"cataract|nuclear sclerosis"),
     "NCO_MELANOMA": dict(role="N", icd10=["C43*"], icd9=["172*"], rx=r"melanoma"),
 }
 
@@ -152,9 +153,13 @@ DX = {
 # PROCEDURES (CPT4 / ICD-10-PCS / ICD-9 procedure source codes), P§4, §5.3, §8.3, §9.4, Appendix A.2
 # ---------------------------------------------------------------------------------------------------------
 PX = {
-    "NEPHRECTOMY": dict(cpt=["50220", "50225", "50230", "50234", "50236", "50545", "50546", "50548"],
+    "NEPHRECTOMY": dict(cpt=["50220", "50225", "50230", "50545", "50546"],
                         pcs=["0TT00ZZ", "0TT04ZZ", "0TT04ZG", "0TT10ZZ", "0TT14ZZ", "0TT14ZG", "0TT20ZZ", "0TT24ZZ", "0TT24ZG"],
-                        icd9p=["55.51", "55.52", "55.54"], rx=r"nephrectomy|kidney|resection"),
+                        icd9p=["55.52", "55.54"], rx=r"nephrectomy|kidney|resection"),
+    # Nephroureterectomy (kidney + whole ureter; mostly for renal pelvis / ureter cancer). Confirms RCC in the primary
+    # analysis; a sensitivity run drops it (decision 2026-11-28). ICD-10-PCS has no single code for it.
+    "NEPHROURETERECTOMY": dict(cpt=["50234", "50236", "50548"], pcs=[], icd9p=["55.51"],
+                               rx=r"nephrectomy|nephroureterectomy|ureterectomy"),
     "PARTIAL_NEPHRECTOMY": dict(cpt=["50240", "50543"], pcs=["0TB00ZZ", "0TB03ZZ", "0TB04ZZ", "0TB10ZZ", "0TB13ZZ", "0TB14ZZ"],
                                 icd9p=["55.4"], rx=r"nephrectomy|kidney|excision"),
     "RENAL_ABLATION": dict(cpt=["50250", "50542", "50592", "50593"], pcs=["0T500ZZ", "0T503ZZ", "0T504ZZ", "0T510ZZ", "0T513ZZ", "0T514ZZ"],
@@ -172,7 +177,8 @@ PX = {
     "CYSTOSCOPY": dict(cpt=["52000"], pcs=[], icd9p=[], rx=r"cystourethroscopy|cystoscop"),
 }
 # Kidney-cancer-confirming procedures (P§8.3: biopsy supports the date but never confirms alone)
-CONFIRMING_PX = ["NEPHRECTOMY", "PARTIAL_NEPHRECTOMY", "RENAL_ABLATION"]
+CONFIRMING_PX = ["NEPHRECTOMY", "NEPHROURETERECTOMY", "PARTIAL_NEPHRECTOMY", "RENAL_ABLATION"]
+CONFIRMING_PX_SENS = [k for k in CONFIRMING_PX if k != "NEPHROURETERECTOMY"]   # sensitivity: without nephroureterectomy
 
 # ---------------------------------------------------------------------------------------------------------
 # LABS (LOINC codes; name-checked in F00), P§4, §4.1, §9.4
@@ -248,7 +254,16 @@ SURVEY_ITEMS = {        # question concept_code -> variable. [UNCONFIRMED] codes
     "Income_AnnualIncome": "income",
     "Smoking_100CigsLifetime": "smoke_100",
     "StreetAddress_PIIZIP": "zip3",
+    "Insurance_HealthInsurance": "insured",                     # confirmed in F01.6 (2026-11-28)
+    "HealthInsurance_InsuranceTypeUpdate": "insurance_type",    # multi-select; confirmed in F01.6
 }
+# Insurance type (descriptive, P§9.4). Multi-select: the first group in INSURANCE_PRECEDENCE that a person ticked wins.
+INSURANCE_GROUPS = {"InsuranceTypeUpdate_Medicaid": "Medicaid", "InsuranceTypeUpdate_Medicare": "Medicare",
+                    "InsuranceTypeUpdate_Military": "Military or VA", "InsuranceTypeUpdate_VA": "Military or VA",
+                    "InsuranceTypeUpdate_EmployerOrUnion": "Private", "InsuranceTypeUpdate_Purchased": "Private",
+                    "InsuranceTypeUpdate_Indian": "Other", "InsuranceTypeUpdate_OtherHealthPlan": "Other",
+                    "InsuranceTypeUpdate_None": "None"}
+INSURANCE_PRECEDENCE = ["Medicaid", "Medicare", "Military or VA", "Private", "Other", "None"]
 HISPANIC_SUBGROUP_QUESTION_RX = r"hispanic|latino|spanish"     # P§11.1: subgroup item located by name in F01
 BIRTHPLACE_QUESTION_RX = r"born|birthplace|country of birth"
 CROSSWALKS = {          # answer concept_code -> level; unmatched answers are printed by F04 (never silently dropped)
@@ -256,21 +271,22 @@ CROSSWALKS = {          # answer concept_code -> level; unmatched answers are pr
                  "WhatRaceEthnicity_Hispanic": "Hispanic", "WhatRaceEthnicity_Asian": "Asian",
                  "WhatRaceEthnicity_AIAN": "AIAN", "WhatRaceEthnicity_NHPI": "NHPI", "WhatRaceEthnicity_MENA": "MENA",
                  "WhatRaceEthnicity_RaceEthnicityNoneOfThese": "Other", "PMI_Skip": "Not answered",
-                 "PMI_PreferNotToAnswer": "Not answered"},
+                 "PMI_PreferNotToAnswer": "Not answered", "PMI_DontKnow": "Not answered"},
     "sex_at_birth": {"SexAtBirth_Male": "Male", "SexAtBirth_Female": "Female", "SexAtBirth_Intersex": "Other",
                      "SexAtBirth_SexAtBirthNoneOfThese": "Other", "PMI_Skip": "Not answered",
-                     "PMI_PreferNotToAnswer": "Not answered"},
-    # Answer codes confirmed in the 2026-11-28 F01.6 inventory. Groupings are a proposal (O10).
+                     "PMI_PreferNotToAnswer": "Not answered", "PMI_DontKnow": "Not answered"},
+    # Answer codes confirmed in the 2026-11-28 F01.6 inventory; groupings approved 2026-11-28. Every survey question:
+    # skipped, prefer not to answer and don't know = "Not answered".
     "education": {"HighestGrade_NeverAttended": "Less than high school", "HighestGrade_OneThroughFour": "Less than high school",
                   "HighestGrade_FiveThroughEight": "Less than high school",
                   "HighestGrade_NineThroughEleven": "Less than high school",
                   "HighestGrade_TwelveOrGED": "High school or GED", "HighestGrade_CollegeOnetoThree": "Some college",
                   "HighestGrade_CollegeGraduate": "College graduate", "HighestGrade_AdvancedDegree": "Advanced degree",
-                  "PMI_Skip": "Not answered", "PMI_PreferNotToAnswer": "Not answered"},
+                  "PMI_Skip": "Not answered", "PMI_PreferNotToAnswer": "Not answered", "PMI_DontKnow": "Not answered"},
     "income": {"AnnualIncome_less10k": "<25k", "AnnualIncome_10k25k": "<25k", "AnnualIncome_25k35k": "25-50k",
                "AnnualIncome_35k50k": "25-50k", "AnnualIncome_50k75k": "50-100k", "AnnualIncome_75k100k": "50-100k",
                "AnnualIncome_100k150k": "100-200k", "AnnualIncome_150k200k": "100-200k", "AnnualIncome_more200k": ">=200k",
-               "PMI_Skip": "Not answered", "PMI_PreferNotToAnswer": "Not answered"},
+               "PMI_Skip": "Not answered", "PMI_PreferNotToAnswer": "Not answered", "PMI_DontKnow": "Not answered"},
 }
 SKIP_CODES = ["PMI_Skip", "PMI_PreferNotToAnswer", "PMI_DontKnow"]     # kept as "Not answered" (M9)
 PR_ZIP3 = ["006", "007", "009"]                                        # P§11.1 [UNCONFIRMED against USPS]
@@ -283,12 +299,41 @@ ADJ_Q1 = ["age_t0", "sex", "t0_year", "smoking", "bmi_cat", "hypertension", "dia
           "education", "income", "race_eth"]                 # + site as stratum (P§9.2)
 ADJ_Q2 = ADJ_Q1 + ["episode_type", "episode_setting", "resistant_org", "pcn_allergy", "egfr_cat"]
 
-TABLE1_VARS = ADJ_Q2 + ["coding_era", "years_t0_to_enrollment", "ehr_years_before_t0", "hispanic", "puerto_rican"]
+TABLE1_VARS = ADJ_Q2 + ["coding_era", "years_t0_to_enrollment", "ehr_years_before_t0", "hispanic", "puerto_rican",
+                        "pr_residence", "insurance", "prophylaxis_before", "hematuria_2y"]
+# Table 1 standardized differences (blind: covariates only): (group, reference) pairs
+SMD_PAIRS = {"Q1": [("recurrent", "single")], "Q2": [("B", "A"), ("C", "A"), ("D", "A")]}
 
 # ---------------------------------------------------------------------------------------------------------
 # RUN SETTINGS
 # ---------------------------------------------------------------------------------------------------------
+# ---------------------------------------------------------------------------------------------------------
+# OUTCOME MODELS (F05-F10). Choices the protocol leaves to the analyst are README open items O15-O19.
+# ---------------------------------------------------------------------------------------------------------
+ANALYSIS = {
+    "min_events_per_arm": DECISIONS["D15_subgroup_min_per_cell"],   # an HR is shown only if each compared arm has >= 21
+    "ps_truncate_pct": (1, 99),       # O15: stabilized IPTW truncated at the 1st and 99th percentiles
+    "site_stratum": True,             # P§9.2: EHR site as Cox stratum in the primary model (A14 shows it unstratified)
+    "mice_m": 20,                     # P§12.2 #8 / D16: primary
+    "mice_m_sensitivity": 5,          # O16: imputations for sensitivity and secondary models (compute)
+    "mice_iters": 5,
+    "mice_fit_rows": 50000,           # O16: rows sampled to fit each imputation model (donors are all observed rows)
+    "cif_times": (5.0, 10.0),         # years after outcome counting starts (P§2.1)
+    "cif_bootstrap": 100,             # per imputation
+    "ph_split_years": 3.0,            # period HRs 2-5 and > 5 years after T0 = 0-3 and > 3 years after S (P§12.2 #6)
+    "count_covariates_log1p": ["visits_prior_year", "imaging_prior_3y", "prior_uti_episodes", "prior_abx_courses"],
+    "q2b_course_bins": [0, 1, 2, 6],  # D10: 0 / 1 / 2-5 / >= 6 cumulative courses
+    "well_observed_history_years": 5,
+}
+ORDINAL_LEVELS = {     # imputation order (P§9.4 groupings approved 2026-11-28)
+    "education": ["Less than high school", "High school or GED", "Some college", "College graduate", "Advanced degree"],
+    "income": ["<25k", "25-50k", "50-100k", "100-200k", ">=200k"],
+}
+
 RUN = {
+    # Freeze gate (STUDY-LIFECYCLE stage 8; P§12.1): file name in workbench_outputs/ of the blind F00-F04 output.
+    # F05-F10 stop until it is set, the file is in the repo and its F04 code hash matches this run's F04.
+    "blind_frozen_output": "",
     "max_gib": 60,                 # refuse a query that would scan more (q(max_gib=))
     "bucket_name": "",             # workspace bucket resource id; run folder goes there (WORKBENCH-2.0-GUIDE §4)
     "cdr_resource": "",            # data collection resource id for `wb resolve` (WORKBENCH-2.0-GUIDE §2)

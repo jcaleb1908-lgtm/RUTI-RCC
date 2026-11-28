@@ -605,7 +605,7 @@ def apply_prophylaxis_blocks(courses, proph, agent_class=None):
 # =============================================================================
 # 6. KIDNEY CANCER OUTCOME (P§8)
 # =============================================================================
-def rcc_outcome(dx, px, rcc_drug_starts):
+def rcc_outcome(dx, px, rcc_drug_starts, confirming=None):
     """P§8.2-8.4. dx: person_id, date, set_key (RCC, RENAL_PELVIS_CA, RENAL_MASS, KIDNEY_DONOR, KIDNEY_TRAUMA,
     STONE_OR_CHRONIC_INF, KIDNEY_TRANSPLANT_STATUS). px: person_id, date, set_key (P§8.3 sets). rcc_drug_starts: person_id, date.
     Returns one row per person with any RCC code: level (confirmed / possible), ambiguous flag, dx_date,
@@ -616,7 +616,7 @@ def rcc_outcome(dx, px, rcc_drug_starts):
     # (a) a second RCC code 30-365 days after an earlier RCC code
     two = near(rcc, rcc, 30, 365)
     # (b) a confirming procedure within -90..+180 days of a code, not invalidated
-    cpx = px.loc[px["set_key"].isin(K.CONFIRMING_PX), ["person_id", "date"]].drop_duplicates()
+    cpx = px.loc[px["set_key"].isin(confirming or K.CONFIRMING_PX), ["person_id", "date"]].drop_duplicates()
     bad_dx = dx.loc[dx["set_key"].isin(["KIDNEY_DONOR", "KIDNEY_TRAUMA", "KIDNEY_TRANSPLANT_STATUS"]), ["person_id", "date"]]
     bad_px = px.loc[px["set_key"].isin(["DONOR_NEPHRECTOMY", "TRANSPLANT_PX"]), ["person_id", "date"]]
     stone = dx.loc[dx["set_key"].eq("STONE_OR_CHRONIC_INF"), ["person_id", "date"]]

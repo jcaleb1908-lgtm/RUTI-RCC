@@ -1,4 +1,6 @@
-> Converted to Markdown on 2026-11-27 from "Pre-cohort protocol v0.1.docx" (pandoc). Text unchanged. Status: draft for PI review, NOT signed. The signed version and its commit SHA become the prespecification stamp (STUDY-LIFECYCLE freeze line).
+> Converted to Markdown on 2026-11-27 from "Pre-cohort protocol v0.1.docx" (pandoc). Text unchanged. Status: **decisions D1–D21 approved by the PI on 2026-11-28, all as proposed** (reported by Jonathan; written signature pending). The approved version and its commit SHA become the prespecification stamp (STUDY-LIFECYCLE freeze line).
+>
+> **Revisions 2026-11-28 (team, before signature; from the first All of Us data checks, no outcome data seen):** urine culture also by SNOMED (5.3); code systems explained (Appendix A); cataract negative control limited to cataract codes, 366.11 removed (D14, A.1); nephroureterectomy kept as a confirming procedure with a sensitivity analysis without it (8.3); survey groupings for education and income and one rule for skipped answers (9.4); codes for the groups named in 9.1–9.4 written out (A.1, A.5); Appendix D sheet simplified.
 
 **Study:** Is the kidney cancer risk seen after recurrent urinary tract
 infection (UTI) explained by the infection, by the antibiotics used to
@@ -397,7 +399,19 @@ fluoroquinolone, a penicillin, a cephalosporin, a carbapenem, aztreonam,
 an aminoglycoside, pivmecillinam, gepotidacin, sulopenem) within −3 to
 +3 days of a code date, or (ii) a urine culture ordered or resulted
 within −7 to +7 days of a code date (CPT 87086, 87088 **\[VERIFIED\]**;
-or a LOINC urine-culture measurement found by name inside All of Us).
+or a urine-culture lab result found by name inside All of Us, coded in
+LOINC or SNOMED; see Appendix A for what these code systems are).
+
+Urine-culture lab concepts (found by name in All of Us CDR v9, 28 November
+2026): **LOINC** 630-4 (Bacteria identified in Urine by Culture), 13315-7
+(same, 24-hour urine), 17970-5, 17971-3, 17972-1, 17973-9, 17974-7,
+44847-2, 44849-8 (Bacteria # 2 to # 8 identified in Urine by Culture);
+**SNOMED** 104193001 (Bacterial culture, urine, with colony count),
+104194007 (Bacterial culture, urine, with organism identification),
+117010004 (Urine culture). Both systems are used because sites record the
+same test in one or the other. Not used: urinalysis panels "with reflex
+culture" (the culture may never have been done) and viral or
+mycobacterial urine cultures.
 
 > **Decision D8 — UTI definition details** **\[PI to decide\]**
 >
@@ -634,6 +648,15 @@ against procedures and survey self-report (Section 12, validation).
 | Ablation of renal mass                          | 50250 (open cryo), 50542 (laparoscopic), 50592 (percutaneous RF), 50593 (percutaneous cryo) | 0T500ZZ, 0T503ZZ, 0T504ZZ, 0T510ZZ, 0T513ZZ, 0T514ZZ                            | 55.32–55.35, 55.39 **\[NOT CONFIRMED\]** exact titles |
 | Renal biopsy (supports, does not confirm alone) | 50200 (percutaneous), 50205 (open)                                                          | 0TB03ZX, 0TB13ZX (diagnostic excision)                                          | 55.23, 55.24                                          |
 
+**Nephroureterectomy** (removal of the kidney and the whole ureter: CPT
+50234, 50236, 50548; ICD-9-CM 55.51) is done mostly for renal pelvis or
+ureter cancer. It stays a confirming procedure in the primary analysis,
+because it can only confirm a person who already has an RCC (kidney)
+code. **Sensitivity:** the same cohort without nephroureterectomy as a
+confirming procedure; the blind feasibility run reports how many confirmed
+events depend on it (masked when 1–20). ICD-10-PCS has no single
+nephroureterectomy code, so this sensitivity covers CPT and ICD-9 only.
+
 **Rule:** procedures never define a case on their own; they only confirm
 an RCC code. A procedure is not counted as confirming when, within ±90
 days, the person has: a kidney-donor code (Z52.4; V59.4) or donor
@@ -806,7 +829,7 @@ recurrent cystitis was in women (≥2 years SIR 1.39, Mortensen 2026).
 |------------------------------------|-------------------------------------------------------------------------------------------------------------------------------------------------------------|-------------------------------------------------------------------------------------|
 | Age, sex                           | EHR person record; The Basics survey (sex at birth)                                                                                                         | At T0                                                                               |
 | Race, ethnicity, Hispanic subgroup | **Survey only** (The Basics); never EHR race fields                                                                                                         | Answered once at or after enrollment                                                |
-| Education, income, insurance       | Survey (The Basics)                                                                                                                                         | Missing if skipped; multiple imputation (Section 12)                                |
+| Education, income, insurance       | Survey (The Basics)                                                                                                                                         | Education: less than high school / high school or GED / some college / college graduate / advanced degree. Income: <$25k / $25–50k / $50–100k / $100–200k / ≥$200k. Missing if not answered; multiple imputation (Section 12)                                |
 | Smoking                            | Survey (Lifestyle) + EHR (F17.2x, Z72.0, Z87.891; 305.1, V15.82)                                                                                            | Ever vs never; EHR codes in all history before T0; survey answer regardless of date |
 | BMI                                | EHR measurement (closest to T0 in the 3 years before); Z68.3x/Z68.4x, V85.3x/V85.4x as fallback; enrollment physical measurement only if within the window  | Categories \<25, 25–29.9, 30–34.9, ≥35                                              |
 | Hypertension                       | EHR: I10–I16; 401–405; antihypertensive drug                                                                                                                | Any time before T0 (codes) or ≥2 prescriptions in the 3 years before T0             |
@@ -818,6 +841,10 @@ recurrent cystitis was in women (≥2 years SIR 1.39, Mortensen 2026).
 | Abdominal imaging                  | EHR procedures: CPT 74150, 74160, 74170, 74176, 74177, 74178, 74181, 74182, 74183, 76700, 76705, 76770, 76775, 72192, 72193, 72194; ICD-9 proc 87.71, 88.01 | Count in the 3 years before E1 / T0 (and time-varying after T0 for sensitivity)     |
 | Prior UTI, prior antibiotics       | EHR (Sections 5, 6)                                                                                                                                         | 3 years before E1 / T0                                                              |
 | Site, calendar year, coding era    | EHR metadata                                                                                                                                                | At T0                                                                               |
+
+**Survey answers, every question:** "Skip", "Prefer not to answer" and
+"Don't know" are one level, **"Not answered"**. It is never merged into
+another answer.
 
 # **10. Bias plan**
 
@@ -837,7 +864,9 @@ recurrent cystitis was in women (≥2 years SIR 1.39, Mortensen 2026).
 >
 > **Proposed:** Two: (1) benign neoplasm of the adrenal gland
 > (D35.00–D35.02; 227.0) — found on abdominal imaging, no known link to
-> UTI or antibiotics; (2) age-related cataract (H25.x; 366.1x) — not
+> UTI or antibiotics; (2) age-related cataract (H25.x; 366.10,
+> 366.12–366.19, i.e. only codes whose ICD title is a cataract; 366.11
+> pseudoexfoliation of lens capsule is not a cataract and is left out) — not
 > found by abdominal imaging, needs specialist contact.
 >
 > **Reason and evidence:** The review proposed one imaging-detected and
@@ -1177,6 +1206,21 @@ answer or drug).
 
 # **Appendix A. Code lists**
 
+**Code systems used in these definitions.** **ICD-9-CM / ICD-10-CM**:
+diagnosis codes from billing (ICD-9 until September 2015, ICD-10 after).
+**CPT** and **ICD-10-PCS / ICD-9-CM procedures**: procedure codes
+(outpatient and inpatient). **RxNorm**: the US list of drug ingredients
+and products (NLM). **ATC**: the WHO drug-class codes (e.g. C09 = drugs
+acting on the renin–angiotensin system), used here to collect every drug
+in a class. **LOINC** (Logical Observation Identifiers Names and Codes,
+Regenstrief Institute): codes for laboratory tests and clinical
+measurements, e.g. 2160-0 = creatinine in serum. **SNOMED CT**: a large
+clinical terminology; All of Us (OMOP) uses it as the standard vocabulary
+for diagnoses, and some sites also record lab tests and procedures with
+it. In All of Us every ICD code "maps to" a SNOMED concept; this protocol
+names ICD, CPT, LOINC and SNOMED codes and checks the mapped concepts by
+name (Appendix D).
+
 Codes not already given in full in Sections 4–9. Category codes (e.g.,
 C64) mean the category and all codes under it. Sources and the exact
 files used are in Appendix C.
@@ -1203,8 +1247,10 @@ files used are in Appendix C.
 | CKD                                                         | N18.1, N18.2, N18.30–N18.32, N18.4, N18.5, N18.9 (N18.6 = ESRD)                         | 585.1–585.5, 585.9 (585.6 = ESRD)                                                      |
 | Kidney stones                                               | N20.0, N20.1, N20.2, N20.9; Z87.442                                                     | 592.0, 592.1, 592.9; V13.01                                                            |
 | Immunosuppression                                           | B20; Z21; D84.821; Z79.52; Z79.6x (Z79.6x and D84.821 not in FY2016; present by FY2023) | 042; V58.65; V87.46; 279.3                                                             |
-| Negative-control outcomes                                   | D35.00–D35.02; H25.x                                                                    | 227.0; 366.10–366.19                                                                   |
-| Penicillin allergy (Q2 choice only)                         | Z88.0                                                                                   | —                                                                                      |
+| Negative-control outcomes                                   | D35.00–D35.02; H25.x (age-related cataract)                                             | 227.0; 366.10, 366.12–366.19 (366.11 left out: not a cataract)                                             |
+| Penicillin allergy (Q2 choice only)                         | Z88.0                                                                                   | —                                           
+| Resistant organism (Q2 covariate)                           | Z16.x                                                                                   | V09.x                                         |
+| Kidney transplant status (stops a procedure confirming RCC) | Z94.0; T86.1x                                                                           | V42.0; 996.81                                 |                                           |
 
 ## **A.2 Procedures**
 
@@ -1260,6 +1306,19 @@ only after an RCC code (Section 8.2) and never defines a case alone;
 everolimus is also a transplant immunosuppressant (transplant recipients
 are already excluded).
 
+## **A.5 Drug classes and labs for covariates (ATC and LOINC)**
+
+| **Covariate**        | **Codes**                                                                                     |
+|----------------------|-----------------------------------------------------------------------------------------------|
+| Antihypertensive     | ATC C02, C03, C07, C08, C09 (every drug under them)                                           |
+| Glucose-lowering     | ATC A10                                                                                       |
+| Systemic steroid     | ATC H02AB                                                                                     |
+| Immunosuppressant    | ATC L04                                                                                       |
+| Creatinine (eGFR)    | LOINC 2160-0, 38483-4                                                                         |
+| HbA1c                | LOINC 4548-4, 17856-6                                                                         |
+| BMI                  | LOINC 39156-5                                                                                 |
+| Urine culture        | LOINC and SNOMED codes in Section 5.3                                                         |
+
 # **Appendix B. Key references (full list in the literature review v3)**
 
 - Ackerson BK et al. J Infect Dis 2024;230(5):e1101–e1111 (recurrent-UTI
@@ -1310,7 +1369,9 @@ Lesson from our last study: a list labelled "preeclampsia" turned out to
 be hyperlipidemia and coronary aneurysm. Every concept set is therefore
 built from the named starting concepts in this protocol plus everything
 under them, and every included concept is read by name, in both coding
-eras, before use.
+eras, before use. Codes whose name does not fit are listed by the
+pipeline (F00 table 2); the team's decision on each is recorded in the
+study README (open items, O#).
 
 | **Field**                   | **What to record**                                                                                            |
 |-----------------------------|---------------------------------------------------------------------------------------------------------------|
@@ -1318,6 +1379,4 @@ eras, before use.
 | Starting concepts           | The named codes from this protocol (ICD-10-CM and ICD-9-CM source codes; RxNorm ingredients; CPT / PCS codes) |
 | Descendants included?       | Yes / no, and which ones were removed after reading them                                                      |
 | Standard concepts reached   | Names (not IDs) of the standard concepts the source codes map to, separately for ICD-9 and ICD-10 eras        |
-| Wrong-concept check         | Any name that does not belong (yes / no; what was removed)                                                    |
 | Counts by era               | Participants per era (masked 1–20), to spot era-specific mapping failures                                     |
-| Checked by / date           | Two initials: builder and independent checker                                                                 |

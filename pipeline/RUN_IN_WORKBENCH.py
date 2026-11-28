@@ -12,13 +12,18 @@ from pathlib import Path
 REPO = Path.home() / "repos" / "RUTI-RCC"          # <- adjust if the Git resource id differs
 CDR = ""                                            # <- paste `wb resolve --id=<cdr id>` output, e.g. project.C2025Q4R6
 BUCKET = ""                                         # <- workspace bucket resource id for the run folder
-CELLS = ["F00_setup", "F01_inventory", "F02_extract", "F03_phenotypes", "F04_cohorts"]
-RUN_CONTROL = {"new_run": True, "resume_from": None, "run_only": None}   # e.g. resume_from="F03" after a restart
+# STAGE "blind": F00-F04 in a new run folder (cohorts, Table 1, events in total only).
+# STAGE "models": F05-F10 in the SAME run folder, only after that run's ALL_TABLES.txt is saved in workbench_outputs/
+#   and named in _config.RUN["blind_frozen_output"] (the cells stop otherwise).
+STAGE = "blind"
+CELLS = {"blind": ["F00_setup", "F01_inventory", "F02_extract", "F03_phenotypes", "F04_cohorts"],
+         "models": ["F05_main", "F06_timevarying", "F07_missing", "F08_modification", "F09_sensitivity", "F10_results"]}[STAGE]
+RUN_CONTROL = {"new_run": STAGE == "blind", "resume_from": None, "run_only": None}   # e.g. resume_from="F03" after a restart
 
 P = REPO / "pipeline"
 sys.path.insert(0, str(P))
 # Forget modules from an earlier run in this kernel, so a `git pull` takes effect without a kernel restart.
-for _m in ("aou_core", "_config", "rutirc", "cohort"):
+for _m in ("aou_core", "_config", "rutirc", "cohort", "analysis", "outcomes"):
     sys.modules.pop(_m, None)
 import aou_core as C  # noqa: E402
 CODE_HASH = hashlib.sha256(b"".join((P / f).read_bytes() for f in sorted(
@@ -36,6 +41,9 @@ if RUN_CONTROL["resume_from"]:
 if RUN_CONTROL["run_only"]:
     todo = [c for c in CELLS if c in RUN_CONTROL["run_only"]]
     RUN_CONTROL["new_run"] = "F00_setup" in todo
+if not RUN_CONTROL["new_run"]:
+    C.STATE["run"] = C.run_dir()
+    print("continuing run folder", C.STATE["run"])
 for cell in todo:
     print(f"\n==================== {cell} | code {CODE_HASH} ====================")
     C.CFG["footnote_extra"] = f"code {CODE_HASH}"

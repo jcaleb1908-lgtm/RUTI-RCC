@@ -184,6 +184,20 @@ def build(D, spec):
 
 
 # -----------------------------------------------------------------------------------------------------------
+BMI_BINS, BMI_LABELS = [0, 25, 30, 35, 200], ["<25", "25-29.9", "30-34.9", ">=35"]
+EGFR_BINS, EGFR_LABELS = [0, 30, 60, 90, 10 ** 4], ["<30", "30-59", "60-89", ">=90"]
+
+
+def recode_imputed(F):
+    """After multiple imputation of bmi / egfr: rebuild the categories used in the models."""
+    F = F.copy()
+    if "bmi" in F:
+        F["bmi_cat"] = _cat(F["bmi"], BMI_BINS, BMI_LABELS)
+    if "egfr" in F:
+        F["egfr_cat"] = _cat(F["egfr"], EGFR_BINS, EGFR_LABELS)
+    return F
+
+
 def _cat(series, bins, labels):
     return pd.cut(series, bins=bins, labels=labels, right=False).astype(object).where(series.notna(), "Missing")
 
@@ -230,6 +244,21 @@ def add_covariates(D, F, q):
         lev = a["answer_code"].map(cw) if cw else a["answer_name"]
         lev = lev.where(~a["answer_code"].isin(K.SKIP_CODES), "Not answered")
         F[var] = F["person_id"].map(pd.Series(lev.values, index=a["person_id"].values).groupby(level=0).first()).fillna("Not answered")
+    # insurance (descriptive): type by precedence; "None" also from "Do you have health insurance? No"
+    it = sv.loc[sv["question_code"].isin([k for k, v in K.SURVEY_ITEMS.items() if v == "insurance_type"])]
+    it = it.assign(g=it["answer_code"].map(K.INSURANCE_GROUPS)).dropna(subset=["g"])
+    rank = {g: i for i, g in enumerate(K.INSURANCE_PRECEDENCE)}
+    best = it.assign(r=it["g"].map(rank)).sort_values("r").groupby("person_id")["g"].first()
+    ins_q = sv.loc[sv["question_code"].isin([k for k, v in K.SURVEY_ITEMS.items() if v == "insured"])]
+    no_ins = ins_q.loc[ins_q["answer_code"].fillna("").str.endswith("_No"), "person_id"].unique()
+    F["insurance"] = F["person_id"].map(best)
+    F.loc[F["insurance"].isna() & F["person_id"].isin(no_ins), "insurance"] = "None"
+    F["insurance"] = F["insurance"].fillna("Not answered")
+    # Puerto Rico residence (P§11.1): ZIP3 at enrollment
+    zq = sv.loc[sv["question_code"].isin([k for k, v in K.SURVEY_ITEMS.items() if v == "zip3"])]
+    z3 = zq.assign(z=zq["value_as_string"].fillna("").str[:3]).groupby("person_id")["z"].first()
+    zz = F["person_id"].map(z3)
+    F["pr_residence"] = np.where(zz.isin(K.PR_ZIP3), "Puerto Rico", np.where(zz.fillna("").str.len().eq(3), "US mainland or other", "No ZIP"))
     # smoking: EHR codes before ref, or survey 100 cigarettes = yes (P§9.4)
     sm_q = [k for k, v in K.SURVEY_ITEMS.items() if v == "smoke_100"]
     sm_yes = sv.loc[sv["question_code"].isin(sm_q) & sv["answer_code"].fillna("").str.endswith("_Yes"), "person_id"]
@@ -241,7 +270,7 @@ def add_covariates(D, F, q):
     b = b.loc[(b["date"] < b["ref"]) & (b["date"] >= b["ref_minus_3y"]) & b["value_as_number"].between(lo_, hi_)]
     b = b.sort_values(["person_id", "date", "value_as_number"], ascending=[True, False, True]).groupby("person_id").head(1)
     F["bmi"] = F["person_id"].map(b.set_index("person_id")["value_as_number"])
-    F["bmi_cat"] = _cat(F["bmi"], [0, 25, 30, 35, 200], ["<25", "25-29.9", "30-34.9", ">=35"])
+    F["bmi_cat"] = _cat(F["bmi"], BMI_BINS, BMI_LABELS)
     # drugs by ATC group (records per person-date)
     drug, atc = D["drug"], D["atc_drugs"]
     dg = drug.merge(atc[["concept_id", "set_key"]], left_on="drug_concept_id", right_on="concept_id")
@@ -280,13 +309,25 @@ def add_covariates(D, F, q):
     eg = D["egfr"].merge(F[["person_id", "ref", "ref_minus_1y"]], on="person_id")
     eg = eg.loc[(eg["date"] < eg["ref"]) & (eg["date"] >= eg["ref_minus_1y"])].sort_values(
         ["person_id", "date", "egfr"], ascending=[True, False, True]).groupby("person_id").head(1)
-    F["egfr_cat"] = _cat(F["person_id"].map(eg.set_index("person_id")["egfr"]), [0, 30, 60, 90, 10 ** 4], ["<30", "30-59", "60-89", ">=90"])
+    F["egfr"] = F["person_id"].map(eg.set_index("person_id")["egfr"])
+    F["egfr_cat"] = _cat(F["egfr"], EGFR_BINS, EGFR_LABELS)
+    # EHR site (P§9.2 stratum): src_id of the person's last EHR visit before T0
+    lv = D["visits"].loc[D["visits"]["is_ehr"], ["person_id", "visit_start_date", "src_id"]].merge(F[["person_id", "T0"]], on="person_id")
+    lv = lv.loc[lv["visit_start_date"] < lv["T0"]].sort_values(["person_id", "visit_start_date", "src_id"])
+    F["site"] = F["person_id"].map(lv.groupby("person_id")["src_id"].last()).fillna("unknown").astype(str)
     if q == "Q1":
         # Q1b (P§1.1): urinary courses in the window were only class A
         w = D["courses"].merge(F[["person_id", "E1"]], on="person_id")
         w = w.loc[w["urinary"] & (w["c_start"] >= w["E1"]) & (w["c_start"] < w["E1"] + 365 * DAY)]
         only_a = w.groupby("person_id")["abx_class"].agg(lambda s: set(s) == {"A"})
         F["q1b_only_A"] = F["person_id"].map(only_a).fillna(False).astype(bool)
+        # D9 type-specific exposure (P§5.5): recurrent lower-only / recurrent any-upper / single upper / single lower
+        F["q1_type"] = np.select(
+            [F["q1_group"].eq("recurrent") & F["uti_type_window"].eq("lower_only"),
+             F["q1_group"].eq("recurrent") & F["uti_type_window"].eq("any_upper"),
+             F["q1_group"].eq("single") & F["uti_type_window"].eq("any_upper"),
+             F["q1_group"].eq("single") & F["uti_type_window"].eq("lower_only")],
+            ["recurrent_lower_only", "recurrent_any_upper", "single_upper", "single_lower"], "other")
     for c in ("ref_minus_3y", "ref_minus_1y"):
         del F[c]
     return F
