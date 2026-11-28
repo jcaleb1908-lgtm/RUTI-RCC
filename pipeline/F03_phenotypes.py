@@ -58,8 +58,8 @@ def p_courses():
         n_persons=("person_id", "nunique")).reset_index(), counts=["n_persons"])
     # negative-control exposures (P§10): same course rules, one 'class' per ingredient
     nc = DRUG.merge(G.loc[G["neg_control"], ["concept_id", "ingredient"]], left_on="drug_concept_id", right_on="concept_id")
-    nc = nc.assign(abx_class=nc["ingredient"], rec_end=np.where(pd.to_numeric(nc["days_supply"], errors="coerce") > 0,
-                   nc["start_date"] + pd.to_timedelta(pd.to_numeric(nc["days_supply"], errors="coerce").fillna(0), unit="D"),
+    nc = nc.assign(abx_class=nc["ingredient"], rec_end=np.where(pd.to_numeric(nc["days_supply"], errors="coerce").astype(float) > 0,
+                   nc["start_date"] + pd.to_timedelta(pd.to_numeric(nc["days_supply"], errors="coerce").astype(float).fillna(0), unit="D"),
                    nc["start_date"] + K.DECISIONS["D10_default_course_days"] * R.DAY))
     nc["rec_end"] = pd.to_datetime(nc["rec_end"])
     C.save_state(R.build_courses(nc, VIS, codes), "nc_courses")

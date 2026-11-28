@@ -284,7 +284,7 @@ def add_covariates(D, F, q):
     F["ckd_pre_e1"] = _first_before(dx, F, "ref", ["CKD"]) | _first_before(ckd_lab, F, "ref")
     F["stones"] = _first_before(dx, F, "ref", ["STONES"]) | _first_before(px, F, "ref", ["STONE_PX"])
     imm = dg.loc[dg["set_key"].isin(["SYSTEMIC_STEROID", "IMMUNOSUPPRESSANT"])].copy()
-    ds = pd.to_numeric(imm["days_supply"], errors="coerce").fillna(K.DECISIONS["D10_default_course_days"]).clip(lower=1)
+    ds = pd.to_numeric(imm["days_supply"], errors="coerce").astype(float).fillna(K.DECISIONS["D10_default_course_days"]).clip(lower=1)
     imm["dend"] = imm["date"] + pd.to_timedelta(ds, unit="D")
     mi = F[["person_id", "ref", "ref_minus_1y"]].reset_index().merge(imm[["person_id", "date", "dend"]], on="person_id")
     mi["days"] = ((mi[["dend", "ref"]].min(axis=1) - mi[["date", "ref_minus_1y"]].max(axis=1)).dt.days).clip(lower=0)

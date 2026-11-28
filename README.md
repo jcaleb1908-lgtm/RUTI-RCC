@@ -92,7 +92,7 @@ Every D1–D21 decision is a named switch in `pipeline/_config.py` `DECISIONS`, 
 
 ## 5. Limitations (candidates, L#)
 
-L1 volunteer cohort (AL1) · L2 partial EHR capture: outpatient antibiotics and UTIs are under-counted (AL2; P§3.3) · L3 survey covariates collected at enrollment, after T0 (AL4) · L4 left truncation when T0 is before enrollment (AL5; D4) · L5 site heterogeneity (AL7) · L6 death under-ascertained (AL8) · L7 no validated US EHR RCC algorithm; codes carry no histology (AL9; P§8.1) · L8 ICD-9 mapping gaps (AL10; F00 table 4) · L9 hereditary RCC syndromes without specific codes cannot be excluded (P§4) · L10 nitrofurantoin is not a pure no-drug reference (NTP TR-341; P§1.1) · L11 birth year only (O6): age at T0 can be off by up to a year, which blurs the age ≥ 40 cut-off · L12 drug capture varies by site: 309 of 1,554 EHR site-years have visits but no drug records (F01.11).
+L1 volunteer cohort (AL1) · L2 partial EHR capture: outpatient antibiotics and UTIs are under-counted (AL2; P§3.3) · L3 survey covariates collected at enrollment, after T0 (AL4) · L4 left truncation when T0 is before enrollment (AL5; D4) · L5 site heterogeneity (AL7) · L6 death under-ascertained (AL8) · L7 no validated US EHR RCC algorithm; codes carry no histology (AL9; P§8.1) · L8 ICD-9 mapping gaps (AL10; F00 table 4) · L9 hereditary RCC syndromes without specific codes cannot be excluded (P§4) · L10 nitrofurantoin is not a pure no-drug reference (NTP TR-341; P§1.1) · L11 birth year only (O6): age at T0 can be off by up to a year, which blurs the age ≥ 40 cut-off · L12 drug capture varies by site: 309 of 1,554 EHR site-years have visits but no drug records (F01.11) · L13 some persons have more than one primary death record in v9; the earliest date is used.
 
 ## 6. Run log
 
@@ -101,8 +101,10 @@ L1 volunteer cohort (AL1) · L2 partial EHR capture: outpatient antibiotics and 
 | first F00+F01 | 2026-11-28 | `151a1d6eb424` | `872100a` | C2025Q4R6 | F00, F01 | ok | `workbench_outputs/2026-11-28_F00-F01_output.txt` | yes |
 | F00+F01 rerun | 2026-11-28 | `a58e5386e92a` | `d368550` | C2025Q4R6 | F00, F01 | ok, but `_config`/`rutirc` were still the first run's (kernel not restarted) | `workbench_outputs/2026-11-28_F00-F01_rerun_output.txt` | partial: F00.12 and F01.11 only |
 | F00+F01 final | 2026-11-28 | `2485c8c8ed67` | `c74c4dc` (PR #4) | C2025Q4R6 | F00, F01 | ok | `workbench_outputs/2026-11-28_F00-F01_final_output.txt` | yes: data checks complete |
+| first blind F00–F04 | 2026-11-28 | `c4ccdaa80296` | `c793dc6` (PR #5) | C2025Q4R6 | F00–F04 | **failed** in F02 (EHR span 75.6 GiB > max_gib 60; duplicate primary death records) and F03 (nullable Int64 days supply) | none kept | no: fixed in PR #6, rerun |
 
 ## 7. Provenance
 
 - `pipeline/aou_core.py` is copied unchanged from BRAIN `projects/all-of-us/starter/aou_core.py` at BRAIN commit `035e4d7` (sha256 `492cdc51…`), plus the 2026-11-28 `bucket_mount` fix (no recursive walk of `~/workspace`; sha256 `7609b5c1…`), applied to BRAIN too. A fix there is a fix here too (M39).
+- 2026-11-28 (PR #6), still to copy to BRAIN: `q()` normalizes BigQuery nullable Int64 / boolean columns to numpy dtypes, and `death_dates()` keeps the earliest date when v9 flags more than one primary death record per person (M40 candidate).
 - Amendments after the PI signs go in `docs/AMENDMENTS-RUTI-RCC-<date>.md` (BRAIN template).
