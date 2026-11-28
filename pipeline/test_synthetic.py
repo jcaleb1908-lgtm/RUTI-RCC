@@ -529,6 +529,13 @@ def test_end_to_end():
           not any(re.search(C.COUNT_RX, c) for c in res.columns), str([c for c in res.columns if re.search(C.COUNT_RX, c)]))
     bad = scan_tables(run)
     check("disclosure: no saved table (F00-F10) shows a count 1-20", not bad, ", ".join(bad[:10]))
+    # no Q1 denominator may include the intermediate group's events (F04 leak, then F09.valid, 2026-11-28)
+    V = pd.read_csv(run / "tables" / "F09_valid.csv")
+    v_of = V.loc[V["question"].eq("Q1") & V["item_group"].eq("RCC events"), "of_n"].astype(str).unique()
+    txt = (run / "tables" / "ALL_TABLES.txt").read_text()
+    m = re.findall(r"--- F04\.events_total Q1[^\n]*\n[^\n]*\n\s*\S+\s+(\S+)", txt)
+    check("disclosure: F09.valid Q1 RCC denominator equals the F04 Q1 event total (recurrent + single)",
+          len(v_of) == 1 and bool(m) and v_of[0] == m[-1], f"{v_of} vs {m}")
 
 
 if __name__ == "__main__":
