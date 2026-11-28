@@ -265,6 +265,25 @@ def analysis_diagram(path_base):
 
 
 # ------------------------------------------------------------------------------------------------- 05 / 08
+def descriptive_rows(tabs):
+    from scipy.stats import chi2
+    rows = []
+    for q, lab in (("Q1", "Q1 cohort (recurrent + single UTI)"), ("Q2", "Q2 cohort (new users of a study antibiotic class)")):
+        t = tabs.get(f"F04.events_total {q}")
+        if t is None:
+            continue
+        r = t["df"].iloc[0]
+        n, ev, py = T.num([r["n"]]).iloc[0], T.num([r["events"]]).iloc[0], T.num([r["person_years"]]).iloc[0]
+        if pd.isna(ev) or pd.isna(py):
+            continue
+        lo = chi2.ppf(0.025, 2 * ev) / 2 if ev > 0 else 0.0
+        hi = chi2.ppf(0.975, 2 * (ev + 1)) / 2
+        rows.append({"Cohort": lab, "Persons": f"{int(n):,}", "RCC events": f"{int(ev)}", "Person-years": f"{int(py):,}",
+                     "Rate per 1,000 PY (95% CI)": f"{1000 * ev / py:.2f} ({1000 * lo / py:.2f} to {1000 * hi / py:.2f})",
+                     "Deaths (competing)": str(r.get("deaths_competing", ""))})
+    return rows
+
+
 def results(out, tabs, figdir, captions, code_hash):
     allr = tabs.get("F10.all")
     if allr is None:
@@ -275,6 +294,26 @@ def results(out, tabs, figdir, captions, code_hash):
          p("Every estimate is exploratory: the feasibility gate (D17) needs >= 100 events for a reduced analysis and >= 300 for a "
            "confirmatory one, and the blind freeze was waived by the PI (DEV1, DEV2). A hazard ratio is shown only when each "
            "compared arm has >= 21 events; otherwise the analysis stays descriptive.", SMALL), Spacer(1, 6)]
+    desc = descriptive_rows(tabs)
+    if desc:
+        s += [Paragraph("Descriptive results that can be reported", H2),
+              p("Whole-cohort RCC incidence after the 2-year latency (all exposure groups together), with exact Poisson 95% CI; "
+                "and every cumulative incidence that met the >= 21 events rule.", SMALL)]
+        s += [styled_table([list(desc[0].keys())] + [[p(v) for v in r.values()] for r in desc], font=7), Spacer(1, 6)]
+        cif = tabs.get("F05.cif_Q1")
+        if cif is not None and "CIF_pct" in cif["df"]:
+            shown = cif["df"].loc[cif["df"]["status"].eq("shown")]
+            for _, r in shown.iterrows():
+                s.append(p(f"Q1 {r['group']}: cumulative incidence of RCC {float(r['years_after_counting_start']):.0f} years after "
+                           f"outcome counting starts = {float(r['CIF_pct']):.2f}% (95% CI {float(r['lo']):.2f} to {float(r['hi']):.2f}), "
+                           "IPTW, death competing. The recurrent-UTI curve could not be shown (<= 20 events).", SMALL))
+        hr = tabs.get("F08.hisp_rates")
+        if hr is not None:
+            d = hr["df"].loc[~hr["df"]["group"].str.contains("living in Puerto Rico")]
+            s += [Spacer(1, 4), p("Person-years and RCC events by Hispanic and Puerto Rican group (A20). Rows for Puerto Ricans living "
+                                  "in Puerto Rico are left out: <= 20 such persons per exposure group (Table 1).", SMALL),
+                  styled_table([list(d.columns)] + d.astype(str).values.tolist(), font=6.5)]
+        s.append(PageBreak())
     if ans is not None:
         s += [Paragraph("What each analysis could answer", H2)]
         a = ans["df"]
@@ -299,6 +338,8 @@ def results(out, tabs, figdir, captions, code_hash):
     s.append(p(f"Code {code_hash}.", TINY))
     doc(out / "05_results_by_question.pdf", s, land=True)
     # forest plot of every shown HR
+    if not {"HR", "lo", "hi"} <= set(R.columns):
+        return True
     R["HRn"], R["lon"], R["hin"] = T.num(R["HR"]), T.num(R["lo"]), T.num(R["hi"])
     F = R.loc[R["status"].eq("shown") & R["HRn"].notna()]
     if len(F):

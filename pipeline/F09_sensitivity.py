@@ -177,13 +177,16 @@ def p_valid():
     confirmed. Survey self-report of kidney cancer needs the Personal Medical History items, not extracted yet."""
     rows = []
     rcc = D["rcc"].set_index("person_id")
+    # Q1: recurrent + single only, the population of F04.events_total. With the intermediate group included, of_n
+    # minus that total would give the intermediate group's events (a count 1-20, by exposure group).
+    FV = {q: (FR[q].loc[FR[q]["q1_group"].isin(["recurrent", "single"])] if q == "Q1" else FR[q]) for q in QS}
     for q in QS:
-        ev = FR[q].loc[FR[q]["event"].eq(1), "person_id"]
+        ev = FV[q].loc[FV[q]["event"].eq(1), "person_id"]
         route = ev.map(rcc["confirm_route"]).value_counts()
         for k in ("procedure", "two_codes", "drug"):
             rows.append({"question": q, "item_group": "RCC events", "item": f"confirmed by {k}", "n": int(route.get(k, 0)),
                          "of_n": len(ev)})
-    E1 = FR["Q1"]
+    E1 = FV["Q1"]
     for k in ("confirmed_abx", "confirmed_culture"):
         if k in E1:
             rows.append({"question": "Q1", "item_group": "index UTI episodes", "item": k.replace("_", " by "),
@@ -191,7 +194,7 @@ def p_valid():
                          "of_n": len(E1)})
     T = pd.DataFrame(rows)
     T["share"] = T["n"] / T["of_n"].where(T["of_n"] > 0)
-    C.show("valid", "Validation (A22): confirmation routes of RCC events and of index UTI episodes", T,
+    C.show("valid", "Validation (A22): confirmation routes of RCC events and of index UTI episodes (Q1: recurrent + single)", T,
            counts=["n", "of_n"], deps={"share": ["n", "of_n"]}, group_cols=["question", "item_group"],
            note="confirmation routes are hierarchical (procedure, then two codes, then drug). Survey self-report "
                 "concordance: not run (Personal Medical History items not extracted).")

@@ -29,6 +29,8 @@ sys.path.insert(0, str(P))
 for _m in ("aou_core", "_config", "rutirc", "cohort", "analysis", "outcomes"):
     sys.modules.pop(_m, None)
 import aou_core as C  # noqa: E402
+import _config as _K  # noqa: E402
+C.CFG.update(project=_K.PROJECT, version=_K.PIPELINE_VERSION, hide_max=20)   # also when F00 is not in this run
 CODE_HASH = hashlib.sha256(b"".join((P / f).read_bytes() for f in sorted(
     x.name for x in P.glob("*.py") if not x.name.startswith("test_")))).hexdigest()[:12]
 C.CFG["cdr"] = CDR or (C.resolve_resource("cdr") or "")
