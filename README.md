@@ -56,7 +56,7 @@ Every D1–D21 decision is a named switch in `pipeline/_config.py` `DECISIONS`, 
 | O3 | "≥2 episodes within 180 days": ≤ 180 or < 180 | ≤ 180 | PI |
 | O4 | Q2 "≥2 classes within ±3 d": among A–G or only the compared classes | A–G | PI |
 | O5 | Which src_id values count as EHR (`^EHR site`) | **Checked 2026-11-28 (F01.2):** `EHR site #` = 69 sites, counted. "Participant Mediated EHR" (PTSC, TPC, CLAD) and the portals are **not** counted as EHR. | PI to confirm that participant-mediated EHR stays out |
-| O6 | Day of birth when only month/year (day 15) | **F01.1:** `day_of_birth` is empty for all 747,029 persons, but `birth_datetime` is filled for all, and the code uses it. The next F01 run shows whether `birth_datetime` holds real days or a placeholder (Jan 1 / day 15) | Jonathan, next F01 |
+| O6 | Date of birth | **Settled 2026-11-28 (F01.1):** only the birth **year** is real. `day_of_birth` is empty for everyone, and `birth_datetime` has one month and day 15 for all 747,029 persons (a fixed placeholder). Age is therefore accurate to about ±1 year (L11) | none: data limit |
 | O7 | RCC diagnosis date = earliest RCC code (literal §8.4), not the code that met confirmation | literal | PI |
 | O8 | ≥2 RCC codes that don't meet 30–365 d (e.g. 4 d apart) | "possible" | PI |
 | O9 | Codes the protocol named by group only: antihypertensive / glucose-lowering / steroid / immunosuppressant by ATC (C02–C09, A10, H02AB, L04); resistant organism Z16 / V09; transplant status Z94.0, T86.1, V42.0, 996.81 (invalidates confirming procedures); LOINC creatinine 2160-0 and 38483-4, HbA1c 4548-4 and 17856-6, BMI 39156-5 | **Approved 2026-11-28**; written into protocol A.1 and A.5 | done |
@@ -68,7 +68,7 @@ Every D1–D21 decision is a named switch in `pipeline/_config.py` `DECISIONS`, 
 
 ## 5. Limitations (candidates, L#)
 
-L1 volunteer cohort (AL1) · L2 partial EHR capture: outpatient antibiotics and UTIs are under-counted (AL2; P§3.3) · L3 survey covariates collected at enrollment, after T0 (AL4) · L4 left truncation when T0 is before enrollment (AL5; D4) · L5 site heterogeneity (AL7) · L6 death under-ascertained (AL8) · L7 no validated US EHR RCC algorithm; codes carry no histology (AL9; P§8.1) · L8 ICD-9 mapping gaps (AL10; F00 table 4) · L9 hereditary RCC syndromes without specific codes cannot be excluded (P§4) · L10 nitrofurantoin is not a pure no-drug reference (NTP TR-341; P§1.1).
+L1 volunteer cohort (AL1) · L2 partial EHR capture: outpatient antibiotics and UTIs are under-counted (AL2; P§3.3) · L3 survey covariates collected at enrollment, after T0 (AL4) · L4 left truncation when T0 is before enrollment (AL5; D4) · L5 site heterogeneity (AL7) · L6 death under-ascertained (AL8) · L7 no validated US EHR RCC algorithm; codes carry no histology (AL9; P§8.1) · L8 ICD-9 mapping gaps (AL10; F00 table 4) · L9 hereditary RCC syndromes without specific codes cannot be excluded (P§4) · L10 nitrofurantoin is not a pure no-drug reference (NTP TR-341; P§1.1) · L11 birth year only (O6): age at T0 can be off by up to a year, which blurs the age ≥ 40 cut-off · L12 drug capture varies by site: 309 of 1,554 EHR site-years have visits but no drug records (F01.11).
 
 ## 6. Run log
 
@@ -76,6 +76,7 @@ L1 volunteer cohort (AL1) · L2 partial EHR capture: outpatient antibiotics and 
 |---|---|---|---|---|---|---|---|---|
 | first F00+F01 | 2026-11-28 | `151a1d6eb424` | `872100a` | C2025Q4R6 | F00, F01 | ok | `workbench_outputs/2026-11-28_F00-F01_output.txt` | yes |
 | F00+F01 rerun | 2026-11-28 | `a58e5386e92a` | `d368550` | C2025Q4R6 | F00, F01 | ok, but `_config`/`rutirc` were still the first run's (kernel not restarted) | `workbench_outputs/2026-11-28_F00-F01_rerun_output.txt` | partial: F00.12 and F01.11 only |
+| F00+F01 final | 2026-11-28 | `2485c8c8ed67` | `c74c4dc` (PR #4) | C2025Q4R6 | F00, F01 | ok | `workbench_outputs/2026-11-28_F00-F01_final_output.txt` | yes: data checks complete |
 
 ## 7. Provenance
 
