@@ -75,5 +75,5 @@ L1 volunteer cohort (AL1) · L2 partial EHR capture: outpatient antibiotics and 
 
 ## 7. Provenance
 
-- `pipeline/aou_core.py` is copied unchanged from BRAIN `projects/all-of-us/starter/aou_core.py` at BRAIN commit `035e4d7` (sha256 `492cdc51…`). A fix there is a fix here too (M39).
+- `pipeline/aou_core.py` is copied unchanged from BRAIN `projects/all-of-us/starter/aou_core.py` at BRAIN commit `035e4d7` (sha256 `492cdc51…`), plus the 2026-11-28 `bucket_mount` fix (no recursive walk of `~/workspace`; sha256 `7609b5c1…`), applied to BRAIN too. A fix there is a fix here too (M39).
 - Amendments after the PI signs go in `docs/AMENDMENTS-RUTI-RCC-<date>.md` (BRAIN template).

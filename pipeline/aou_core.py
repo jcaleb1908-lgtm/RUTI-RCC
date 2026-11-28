@@ -241,8 +241,12 @@ def bucket_mount(name, home=None):
     base = Path(home or os.path.expanduser("~")) / "workspace"
     if not base.exists():
         return None
-    hits = sorted(p for p in base.rglob(name) if p.is_dir() and not p.name.endswith(("_NO_ACCESS", "_NOT_FOUND", "_MOUNT_FAILED")))
-    return hits[0] if hits else None
+    # Look only at base/<name> and base/<folder>/<name>. Never rglob: ~/workspace also mounts the data buckets
+    # (Cloud Storage FUSE), and walking them can take hours.
+    for cand in [base / name] + sorted(d / name for d in base.iterdir() if d.is_dir()):
+        if cand.is_dir():
+            return cand
+    return None
 
 
 def gcs_cp(src, dst, billing_project=None, timeout=1800):
