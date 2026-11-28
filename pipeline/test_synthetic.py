@@ -376,6 +376,12 @@ def test_end_to_end():
     check("end-to-end: Q2 classes in {A, B, C, D}", set(F2["q2_class"]) <= {"A", "B", "C", "D"} and len(F2) > 0)
     G = C.load_state("drug_glossary", internal=False)
     check("end-to-end: ophthalmic antibiotic not counted", not G.loc[G["form"].eq("non_systemic"), "abx_counted"].any())
+    gv = R.drug_glossary(pd.DataFrame({"concept_id": [1], "concept_name": ["vancomycin"]}),
+                         pd.DataFrame({"root_id": [1, 1, 1], "concept_id": [11, 12, 13], "concept_class_id": ["x"] * 3,
+                                       "concept_name": ["Vancomycin 1000 MG Injectable Suspension [Vancocin]",
+                                                        "vancomycin 125 MG Oral Capsule", "Vancocin Oral Product"]}))
+    check("unit: IV vancomycin ('Injectable Suspension') counted; oral vancomycin not",
+          gv.set_index("concept_id")["abx_counted"].to_dict() == {11: True, 12: False, 13: False})
     check("end-to-end: TMP-SMX product is class B once", G.loc[G["concept_name"].str.contains("sulfamethoxazole 800"), "abx_classes"].iloc[0] == "B")
     bad = scan_tables(run)
     check("disclosure: no saved table shows a count 1-20", not bad, ", ".join(bad[:10]))

@@ -75,6 +75,7 @@ L1 volunteer cohort (AL1) · L2 partial EHR capture: outpatient antibiotics and 
 | Run ID | Date (UTC) | Code hash | Commit | CDR | Cells | Ended | Output | Kept? |
 |---|---|---|---|---|---|---|---|---|
 | first F00+F01 | 2026-11-28 | `151a1d6eb424` | `872100a` | C2025Q4R6 | F00, F01 | ok | `workbench_outputs/2026-11-28_F00-F01_output.txt` | yes |
+| F00+F01 rerun | 2026-11-28 | `a58e5386e92a` | `d368550` | C2025Q4R6 | F00, F01 | ok, but `_config`/`rutirc` were still the first run's (kernel not restarted) | `workbench_outputs/2026-11-28_F00-F01_rerun_output.txt` | partial: F00.12 and F01.11 only |
 
 ## 7. Provenance
 
