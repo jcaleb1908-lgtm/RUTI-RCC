@@ -486,6 +486,8 @@ def test_end_to_end():
     # ---- freeze gate, then the outcome cells on the synthetic data
     import outcomes as O
     model_cells = ["F05_main", "F06_timevarying", "F07_missing", "F08_modification", "F09_sensitivity", "F10_results"]
+    WAIVER = K.RUN.get("blinding_waived", "")
+    K.RUN["blinding_waived"] = ""
     K.RUN["blind_frozen_output"] = ""
     try:
         exec(compile((HERE / "F05_main.py").read_text(), "F05_main", "exec"), {"RUN_CONTROL": RUN_CONTROL, "CODE_HASH": code_hash, "__name__": "__main__"})
@@ -502,6 +504,14 @@ def test_end_to_end():
         stopped = True
     check("freeze gate: F05 stops when the frozen output came from different F04 code", stopped)
     frozen.write_text((run / "tables" / "ALL_TABLES.txt").read_text())
+    # DEV1: with the waiver set and no frozen file, the gate passes on this run's F04 stamp
+    K.RUN["blinding_waived"], K.RUN["blind_frozen_output"] = WAIVER or "test waiver", ""
+    try:
+        O.freeze_check(); passed = True
+    except RuntimeError:
+        passed = False
+    check("freeze gate: the recorded PI waiver (DEV1) lets F05-F10 run on this run's F04", passed)
+    K.RUN["blind_frozen_output"] = str(frozen)
     # Synthetic data have few events: lower the >= 21 events rule so every model path runs. Masking (hide_max 20)
     # is unchanged, and the disclosure scan below still applies to every table.
     O.MIN_EV, K.DECISIONS["D15_subgroup_min_events"], K.DECISIONS["D15_subgroup_min_per_cell"] = 1, 1, 1

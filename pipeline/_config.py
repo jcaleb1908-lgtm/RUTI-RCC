@@ -334,6 +334,10 @@ RUN = {
     # Freeze gate (STUDY-LIFECYCLE stage 8; P§12.1): file name in workbench_outputs/ of the blind F00-F04 output.
     # F05-F10 stop until it is set, the file is in the repo and its F04 code hash matches this run's F04.
     "blind_frozen_output": "",
+    # PI deviation 2026-11-28 (docs/AMENDMENTS-RUTI-RCC-2026-11-28.md, DEV1): the blind freeze is waived and F05-F10
+    # run on the same run folder's F04 cohorts. Non-empty = waived; the text is printed in every outcome cell.
+    "blinding_waived": "DEV1 2026-11-28: PI waived the blind freeze after the D17 gate (Q1 35, Q2 30 events); "
+                       "all outcome estimates are exploratory (D17 < 100 events)",
     "max_gib": 150,                # EHR span scans ~76 GiB in v9 (2026-11-28 run); about USD 0.50 per scan on demand                 # refuse a query that would scan more (q(max_gib=))
     "bucket_name": "",             # workspace bucket resource id; run folder goes there (WORKBENCH-2.0-GUIDE §4)
     "cdr_resource": "",            # data collection resource id for `wb resolve` (WORKBENCH-2.0-GUIDE §2)

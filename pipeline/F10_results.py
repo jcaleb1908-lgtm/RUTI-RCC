@@ -60,8 +60,29 @@ GLOSSARY = [
 ]
 
 
+def p_answerable():
+    """What each analysis could answer: an estimate was shown, or it stays descriptive because events were too few
+    (<= 20 in an arm or cell, O19), or the model was not estimable. D17: with < 100 events every estimate is exploratory."""
+    if RES is None or not len(RES):
+        return
+    R_ = RES.assign(outcome=np.where(RES["status"].eq("shown"), "estimate shown (exploratory)",
+                    np.where(RES["status"].astype(str).str.startswith("not estimable"), "not estimable",
+                             "descriptive only: too few events")))
+    T = R_.groupby(["analysis_id", "analysis", "question"], sort=False)["outcome"].agg(
+        lambda s: s.value_counts().to_dict()).reset_index()
+    T["estimates_shown"] = R_.groupby(["analysis_id", "analysis", "question"], sort=False)["status"].apply(
+        lambda s: int(s.eq("shown").sum())).values
+    T["estimates_total"] = R_.groupby(["analysis_id", "analysis", "question"], sort=False).size().values
+    T["answer"] = np.where(T["estimates_shown"].eq(0), "DESCRIPTIVE ONLY (insufficient events)",
+                           np.where(T["estimates_shown"].lt(T["estimates_total"]), "PARTLY (some contrasts descriptive)",
+                                    "ESTIMATED (exploratory)"))
+    C.show("answerable", "What each analysis could answer", T.drop(columns="outcome"), counts=[], max_rows=200,
+           note="Exploratory throughout: D17 needs >= 100 events for a reduced and >= 300 for a confirmatory analysis.")
+C.part("3 what could be answered", p_answerable)
+
+
 def p_glossary():
     C.show("glossary", "Glossary of analysis terms", pd.DataFrame(GLOSSARY, columns=["term", "definition", "source"]), counts=[])
-C.part("3 glossary", p_glossary)
+C.part("4 glossary", p_glossary)
 C.end()
 ##### END F10 #####
