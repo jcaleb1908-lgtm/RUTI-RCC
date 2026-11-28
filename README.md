@@ -89,6 +89,7 @@ Every D1–D21 decision is a named switch in `pipeline/_config.py` `DECISIONS`, 
 | O18 | EHR site | src_id of the last EHR visit before T0. §9.2 makes site a stratum (primary) while §12.2 #14 lists "stratified by site" as a sensitivity: the code stratifies the primary and shows the unstratified model in A14 | PI |
 | O19 | When an estimate is shown | ≥ 21 events in each compared arm for every HR (the D15 per-cell rule applied to all analyses); event counts by arm only in F05.rates | note |
 | O20 | Small definitions inside the analyses | Q2b counts courses and episodes from E1; CIF times are years after outcome counting starts; "well observed" = ≥ 5 y history and a visit in every complete follow-up year; the hematuria exclusion adds UTI episodes with a hematuria code; the PH test is an approximate score test on log t | PI |
+| O21 | D17 result of the first complete blind run (2026-11-28): Q1 35 events (recurrent + single), Q2 30 events; events per parameter 0.9 and 0.6. Under D17 as approved, both are "descriptive + Q2b only" | F05–F10 code runs, but the primary HRs are not confirmatory under D17 | PI: follow D17, or amend the design before any outcome-by-exposure output (amendment file) |
 
 ## 5. Limitations (candidates, L#)
 
@@ -102,6 +103,7 @@ L1 volunteer cohort (AL1) · L2 partial EHR capture: outpatient antibiotics and 
 | F00+F01 rerun | 2026-11-28 | `a58e5386e92a` | `d368550` | C2025Q4R6 | F00, F01 | ok, but `_config`/`rutirc` were still the first run's (kernel not restarted) | `workbench_outputs/2026-11-28_F00-F01_rerun_output.txt` | partial: F00.12 and F01.11 only |
 | F00+F01 final | 2026-11-28 | `2485c8c8ed67` | `c74c4dc` (PR #4) | C2025Q4R6 | F00, F01 | ok | `workbench_outputs/2026-11-28_F00-F01_final_output.txt` | yes: data checks complete |
 | first blind F00–F04 | 2026-11-28 | `c4ccdaa80296` | `c793dc6` (PR #5) | C2025Q4R6 | F00–F04 | **failed** in F02 (EHR span 75.6 GiB > max_gib 60; duplicate primary death records) and F03 (nullable Int64 days supply) | none kept | no: fixed in PR #6, rerun |
+| blind F00–F04 (full rerun) | 2026-11-28 | `ac8c5cb5ff51` | `PR #7` | C2025Q4R6 | F00–F04 | ok | not committed | **no:** the Q1 event total included the intermediate group while the gate did not, so the intermediate group's event count followed by subtraction (a count 1–20, by exposure group; not a primary contrast). Fixed in PR #8; F04 rerun in the same run folder. Gate (blind totals): Q1 35 events, Q2 30 events, both < 100 → D17 "descriptive + Q2b only" (O21) |
 
 ## 7. Provenance
 

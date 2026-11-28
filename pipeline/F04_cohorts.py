@@ -85,12 +85,17 @@ def run_q(qn):
         # BLIND totals: events and person-years over the whole cohort, never by exposure
         # Sensitivity: rebuild with nephroureterectomy not confirming; report only how many events depend on it
         # (masked when 1-20, so the second total can never be derived).
+        # Q1: totals over the compared groups only (recurrent + single), the same population as the flow's last step
+        # and the gate. Totals that include the intermediate group would let its event count be derived by subtraction.
         F_s, _ = B.build(dict(D, rcc=D_RCC_SENS), SPECS[qn])
+        if qn == "Q1":
+            F = F.loc[F["q1_group"].isin(["recurrent", "single"])]
+            F_s = F_s.loc[F_s["q1_group"].isin(["recurrent", "single"])]
         lost = int(F["event"].sum()) - int(F_s["event"].sum())
         tot = pd.DataFrame([{"n": len(F), "events": int(F["event"].sum()), "person_years": float(F["t_years"].sum()),
                              "deaths_competing": int(F["death_competing"].sum()),
                              "events_lost_without_nephroureterectomy": lost if lost >= 0 else np.nan}])
-        C.show("events_total", f"{qn} RCC events in the analysed cohort, total only (blind)", tot,
+        C.show("events_total", f"{qn} RCC events in the analysed cohort, total only (blind)" + (" - recurrent + single" if qn == "Q1" else ""), tot,
                counts=["n", "events", "deaths_competing", "events_lost_without_nephroureterectomy"],
                note="events_lost_without_nephroureterectomy = confirmed events that need a nephroureterectomy to be confirmed.")
         C.CFG["footnote_extra"] = prev

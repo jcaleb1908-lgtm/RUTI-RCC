@@ -476,6 +476,11 @@ def test_end_to_end():
     check("disclosure: no saved table shows a count 1-20", not bad, ", ".join(bad[:10]))
     txt = (run / "tables" / "ALL_TABLES.txt").read_text()
     check("disclosure: ALL_TABLES.txt has no person_id column", "person_id" not in txt)
+    # blind: the Q1 event total and the gate count the same people, so no group's events follow by subtraction
+    import re as _re
+    _ev = _re.search(r"--- F04\.events_total Q1[^\n]*\n[^\n]*\n\s*\S+\s+(\S+)", txt)
+    _gt = _re.search(r"--- F04\.gate[^\n]*\n[^\n]*\n\s*Q1\s+(\S+)", txt)
+    check("blind: Q1 events_total equals the Q1 gate events", bool(_ev and _gt) and _ev.group(1) == _gt.group(1))
     check("blind: no event count by exposure group in F04 tables",
           not any("event" in c for f in (run / "tables").glob("F04_table1.csv") for c in pd.read_csv(f).columns))
     # ---- freeze gate, then the outcome cells on the synthetic data
