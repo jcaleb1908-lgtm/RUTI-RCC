@@ -232,7 +232,7 @@ def add_covariates(D, F, q):
         F[var] = F["person_id"].map(pd.Series(lev.values, index=a["person_id"].values).groupby(level=0).first()).fillna("Not answered")
     # smoking: EHR codes before ref, or survey 100 cigarettes = yes (P§9.4)
     sm_q = [k for k, v in K.SURVEY_ITEMS.items() if v == "smoke_100"]
-    sm_yes = sv.loc[sv["question_code"].isin(sm_q) & sv["answer_name"].fillna("").str.contains(r"^yes", case=False, regex=True), "person_id"]
+    sm_yes = sv.loc[sv["question_code"].isin(sm_q) & sv["answer_code"].fillna("").str.endswith("_Yes"), "person_id"]
     F["smoking"] = np.where(_first_before(dx, F, "ref", ["SMOKING_DX"]) | F["person_id"].isin(sm_yes), "Ever", "Never/unknown")
     # BMI: closest measurement in the 3 years before ref; tie-break latest date then smallest value (M28)
     lab = D["labs"]

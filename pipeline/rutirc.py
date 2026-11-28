@@ -37,7 +37,7 @@ def match_codes(series, codes, exclude=()):
     return m
 
 
-CODE_VOCABS = ["ICD9CM", "ICD10CM", "CPT4", "ICD10PCS", "ICD9Proc", "LOINC", "ATC"]
+CODE_VOCABS = ["ICD9CM", "ICD10CM", "CPT4", "ICD10PCS", "ICD9Proc", "LOINC", "SNOMED", "ATC"]
 CONCEPT_BY_CODE_SQL = """SELECT concept_id, concept_code, concept_name, vocabulary_id, domain_id, concept_class_id,
        standard_concept, invalid_reason
 FROM `{CDR}.concept`
@@ -67,7 +67,7 @@ def all_code_regex():
             if d.get(k):
                 pats.append(code_rx(d[k])[0])
     for d in K.LABS.values():
-        pats.append(code_rx(d["loinc"])[0])
+        pats.append(code_rx(d["loinc"] + d.get("snomed", []))[0])
     for d in K.ATC_GROUPS.values():
         pats.append(code_rx(d["atc"])[0])
     return "|".join(f"(?:{p})" for p in pats if p != "a^")
@@ -87,8 +87,10 @@ def assign_code_sets(con):
             m = match_codes(sub["concept_code"], d.get(k, []))
             out.append(sub.loc[m].assign(set_key=key, kind="PX", rx_expected=d["rx"]))
     for key, d in K.LABS.items():
-        sub = con.loc[con["vocabulary_id"].eq("LOINC")]
-        out.append(sub.loc[match_codes(sub["concept_code"], d["loinc"])].assign(set_key=key, kind="LAB", rx_expected=d["rx"]))
+        for vocab, k in (("LOINC", "loinc"), ("SNOMED", "snomed")):
+            sub = con.loc[con["vocabulary_id"].eq(vocab)]
+            out.append(sub.loc[match_codes(sub["concept_code"], d.get(k, []))].assign(set_key=key, kind="LAB",
+                                                                                         rx_expected=d["rx"]))
     for key, d in K.ATC_GROUPS.items():
         sub = con.loc[con["vocabulary_id"].eq("ATC")]
         out.append(sub.loc[match_codes(sub["concept_code"], d["atc"])].assign(set_key=key, kind="ATC", rx_expected=d["rx"]))
@@ -258,7 +260,11 @@ WHERE q.vocabulary_id = 'PPI' AND REGEXP_CONTAINS(LOWER(q.concept_name), @rx)
 GROUP BY 1, 2, 3, 4"""
 DOB_SQL = """SELECT COUNT(*) AS persons, COUNTIF(day_of_birth IS NULL) AS n_day_missing,
        COUNTIF(day_of_birth = 15) AS n_day_15, COUNTIF(birth_datetime IS NULL) AS n_birth_datetime_missing,
-       COUNT(DISTINCT day_of_birth) AS distinct_days
+       COUNT(DISTINCT day_of_birth) AS distinct_days,
+       COUNT(DISTINCT EXTRACT(DAY FROM CAST(birth_datetime AS TIMESTAMP))) AS bdt_distinct_days,
+       COUNT(DISTINCT EXTRACT(MONTH FROM CAST(birth_datetime AS TIMESTAMP))) AS bdt_distinct_months,
+       AVG(IF(EXTRACT(DAY FROM CAST(birth_datetime AS TIMESTAMP)) = 1 AND EXTRACT(MONTH FROM CAST(birth_datetime AS TIMESTAMP)) = 1, 1, 0)) AS bdt_share_jan1,
+       AVG(IF(EXTRACT(DAY FROM CAST(birth_datetime AS TIMESTAMP)) = 15, 1, 0)) AS bdt_share_day15
 FROM `{CDR}.person`"""
 SRC_PATTERN_SQL = """SELECT REGEXP_REPLACE(COALESCE(e.src_id, '(null)'), r'[0-9]+', '#') AS src_pattern,
        COUNT(DISTINCT e.src_id) AS distinct_src_ids, COUNT(DISTINCT v.person_id) AS persons

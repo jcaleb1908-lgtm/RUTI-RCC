@@ -89,7 +89,8 @@ def p_site_year():
     p10 = float(np.percentile(d["drugs_per_1000_visits"], 10)) if len(d) else np.nan
     t = pd.DataFrame([{"site_years": len(d), "sites": d["src_id"].nunique(),
                        "ratio_p10_p25_p50_p75": C.pctl(d["drugs_per_1000_visits"], (10, 25, 50, 75)),
-                       "site_years_below_p10": int((d["drugs_per_1000_visits"] < p10).sum())}])
+                       "site_years_below_p10": int((d["drugs_per_1000_visits"] < p10).sum()),
+                       "site_years_no_drugs": int(d["n_drugs"].eq(0).sum())}])
     C.show("11", "Site-year drug completeness (distribution only; sites not shown)", t, counts=[])
 C.part("8 site-year completeness", p_site_year)
 
