@@ -29,7 +29,7 @@ This README is the only notes file: facts, decisions (D#), open items (O#) and l
 
 Estimation code: `pipeline/analysis.py` (weighted Cox with entry, strata and cluster-robust SE; IPTW; balance; Aalen–Johansen; counting-process splits; Fine–Gray weighting; MICE with predictive mean matching; RERI; Rubin's rules) and `pipeline/outcomes.py` (the one workflow every outcome cell calls). The Cox code is tested against statsmodels PHReg (unweighted) and against row replication (weights).
 
-**Freeze gate.** F05–F10 stop unless the blind F00–F04 output is saved in `workbench_outputs/`, its file name is set in `_config.RUN["blind_frozen_output"]`, and its F04 code hash is the F04 that built the current run's cohorts (`state/F04_stamp.json`). So the models can only run on cohorts whose blind description was reviewed and committed first (STUDY-LIFECYCLE stage 8; P§12.1).
+**Freeze gate (waived 2026-11-28, DEV1 in `docs/AMENDMENTS-RUTI-RCC-2026-11-28.md`).** With `_config.RUN["blinding_waived"]` set, F05–F10 run on the same run folder's F04 and print the deviation; every estimate is exploratory (DEV2). Without the waiver, F05–F10 stop unless the blind F00–F04 output is saved in `workbench_outputs/`, its file name is set in `_config.RUN["blind_frozen_output"]`, and its F04 code hash is the F04 that built the current run's cohorts (`state/F04_stamp.json`). So the models can only run on cohorts whose blind description was reviewed and committed first (STUDY-LIFECYCLE stage 8; P§12.1).
 
 **Masking in the outcome cells.** An HR, CIF or RERI is shown only when each compared arm (or cell) has ≥ 21 events (O19). Event counts by arm appear once, in `F05.rates`; the sensitivity tables carry no counts, so nested analyses cannot be subtracted from each other. The F08 rates by ethnic group use `aou_core.leak_hidden` against the F05 arm totals.
 
@@ -47,7 +47,7 @@ The cohort builder follows the protocol's order: candidates, T0 window, age ≥ 
 4. Paste `pipeline/RUN_IN_WORKBENCH.py` into a notebook cell. Set `REPO`, `CDR` and `BUCKET` at the top, then run it. After a kernel restart, `RUN_CONTROL["resume_from"] = "F03"` resumes from that cell.
 5. **Run F00 and F01 alone the first time** (`run_only=["F00_setup", "F01_inventory"]`). Read every name-check table and the survey inventory, then fill §4 below and `_config.py` (`SURVEY_ITEMS`, `CROSSWALKS`) before running F02–F04.
 6. **Blind run:** `STAGE = "blind"` runs F00–F04 in a new run folder. Copy out ALL_TABLES.txt; it is reviewed and committed as the frozen blind output, and its name goes into `_config.RUN["blind_frozen_output"]`.
-7. **Model run:** after `git pull` in the repo folder, set `STAGE = "models"`. F05–F10 run in the **same** run folder (the latest one). F09 is the longest cell; after a kernel restart use `RUN_CONTROL["resume_from"] = "F07"` and so on.
+7. **Final run (DEV1):** `STAGE = "final"` runs F04 then F05–F10 in the latest run folder (F00–F03 reused). **Model run (if the waiver is removed):** after `git pull` in the repo folder, set `STAGE = "models"`. F05–F10 run in the **same** run folder (the latest one). F09 is the longest cell; after a kernel restart use `RUN_CONTROL["resume_from"] = "F07"` and so on.
 8. Copy out **only** `runs/<run>/tables/ALL_TABLES.txt` and save it as `workbench_outputs/YYYY-MM-DD_<what>_output.txt`. Add a row to the run log (§6).
 
 Data rules: participant-level data never leave the Workbench, and no AI tool runs inside the workspace (DUCC; WORKBENCH-2.0-GUIDE §7). Every table goes through `aou_core.show()` (counts 1–20 → `<=20`, complementary cells hidden). The flow goes through `flow_mask`. A second person checks each output before it is shared (P§14).
@@ -89,6 +89,7 @@ Every D1–D21 decision is a named switch in `pipeline/_config.py` `DECISIONS`, 
 | O18 | EHR site | src_id of the last EHR visit before T0. §9.2 makes site a stratum (primary) while §12.2 #14 lists "stratified by site" as a sensitivity: the code stratifies the primary and shows the unstratified model in A14 | PI |
 | O19 | When an estimate is shown | ≥ 21 events in each compared arm for every HR (the D15 per-cell rule applied to all analyses); event counts by arm only in F05.rates | note |
 | O20 | Small definitions inside the analyses | Q2b counts courses and episodes from E1; CIF times are years after outcome counting starts; "well observed" = ≥ 5 y history and a visit in every complete follow-up year; the hematuria exclusion adds UTI episodes with a hematuria code; the PH test is an approximate score test on log t | PI |
+| O21 | D17 result of the first complete blind run (2026-11-28): Q1 35 events (recurrent + single), Q2 30 events; events per parameter 0.9 and 0.6. Under D17 as approved, both are "descriptive + Q2b only" | F05–F10 code runs, but the primary HRs are not confirmatory under D17 | PI: follow D17, or amend the design before any outcome-by-exposure output (amendment file) |
 
 ## 5. Limitations (candidates, L#)
 
@@ -102,6 +103,7 @@ L1 volunteer cohort (AL1) · L2 partial EHR capture: outpatient antibiotics and 
 | F00+F01 rerun | 2026-11-28 | `a58e5386e92a` | `d368550` | C2025Q4R6 | F00, F01 | ok, but `_config`/`rutirc` were still the first run's (kernel not restarted) | `workbench_outputs/2026-11-28_F00-F01_rerun_output.txt` | partial: F00.12 and F01.11 only |
 | F00+F01 final | 2026-11-28 | `2485c8c8ed67` | `c74c4dc` (PR #4) | C2025Q4R6 | F00, F01 | ok | `workbench_outputs/2026-11-28_F00-F01_final_output.txt` | yes: data checks complete |
 | first blind F00–F04 | 2026-11-28 | `c4ccdaa80296` | `c793dc6` (PR #5) | C2025Q4R6 | F00–F04 | **failed** in F02 (EHR span 75.6 GiB > max_gib 60; duplicate primary death records) and F03 (nullable Int64 days supply) | none kept | no: fixed in PR #6, rerun |
+| blind F00–F04 (full rerun) | 2026-11-28 | `ac8c5cb5ff51` | `PR #7` | C2025Q4R6 | F00–F04 | ok | not committed | **no:** the Q1 event total included the intermediate group while the gate did not, so the intermediate group's event count followed by subtraction (a count 1–20, by exposure group; not a primary contrast). Fixed in PR #8; F04 rerun in the same run folder. Gate (blind totals): Q1 35 events, Q2 30 events, both < 100 → D17 "descriptive + Q2b only" (O21) |
 
 ## 7. Provenance
 

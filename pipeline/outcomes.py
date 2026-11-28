@@ -52,6 +52,13 @@ def freeze_check():
     """STUDY-LIFECYCLE stage 8 / P§12.1: outcome models run only after the blind cohort output is frozen."""
     name = (K.RUN.get("blind_frozen_output") or "").strip()
     stop = "STOPPED (freeze gate, expected before the blind output is frozen): "
+    waived = (K.RUN.get("blinding_waived") or "").strip()
+    if waived and not name:
+        if not (C._run() / "state" / "F04_stamp.json").exists():
+            raise RuntimeError(stop + f"run folder {C._run().name} has no F04 stamp: run F04 in this run folder first.")
+        h = json.loads((C._run() / "state" / "F04_stamp.json").read_text())["code"]
+        print(f"PROTOCOL DEVIATION - freeze gate waived: {waived}. Cohorts from this run's F04 (code {h}).", flush=True)
+        return
     if not name:
         raise RuntimeError(stop + "_config.RUN['blind_frozen_output'] is empty. Run F00-F04, copy out ALL_TABLES.txt, "
                            "save it in workbench_outputs/, review it, then set its file name there and pull.")

@@ -17,7 +17,10 @@ BUCKET = ""                                         # <- workspace bucket resour
 #   and named in _config.RUN["blind_frozen_output"] (the cells stop otherwise).
 STAGE = "blind"
 CELLS = {"blind": ["F00_setup", "F01_inventory", "F02_extract", "F03_phenotypes", "F04_cohorts"],
-         "models": ["F05_main", "F06_timevarying", "F07_missing", "F08_modification", "F09_sensitivity", "F10_results"]}[STAGE]
+         "models": ["F05_main", "F06_timevarying", "F07_missing", "F08_modification", "F09_sensitivity", "F10_results"],
+         # "final" (DEV1, blind freeze waived): F04 then F05-F10 in the latest run folder, F00-F03 reused
+         "final": ["F04_cohorts", "F05_main", "F06_timevarying", "F07_missing", "F08_modification", "F09_sensitivity",
+                   "F10_results"]}[STAGE]
 RUN_CONTROL = {"new_run": STAGE == "blind", "resume_from": None, "run_only": None}   # e.g. resume_from="F03" after a restart
 
 P = REPO / "pipeline"
