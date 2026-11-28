@@ -366,13 +366,26 @@ def row_min(cols):
 
 def near(a, b, lo_days, hi_days, a_col="date", b_col="date"):
     """For each row of a (person_id, a_col): is there a row of b for the same person with
-    a_col + lo_days <= b_col <= a_col + hi_days? Returns boolean Series aligned with a."""
+    a_col + lo_days <= b_col <= a_col + hi_days? Returns boolean Series aligned with a.
+    Sorted search per person (no person-level cross join), so memory stays linear in len(a) + len(b)."""
     if a.empty or b.empty:
         return pd.Series(False, index=a.index)
-    m = a[["person_id", a_col]].reset_index().rename(columns={"index": "_i", a_col: "_a"}).merge(
-        b[["person_id", b_col]].rename(columns={b_col: "_b"}).drop_duplicates(), on="person_id")
-    k = (m["_b"] >= m["_a"] + lo_days * DAY) & (m["_b"] <= m["_a"] + hi_days * DAY)
-    return pd.Series(a.index.isin(m.loc[k, "_i"].unique()), index=a.index)
+    bb = b[["person_id", b_col]].dropna().drop_duplicates()
+    if bb.empty:
+        return pd.Series(False, index=a.index)
+    # one sortable key: person rank * span + day number, so a single searchsorted covers every person
+    pids = pd.Index(pd.unique(np.concatenate([a["person_id"].values, bb["person_id"].values])))
+    t0 = min(pd.to_datetime(a[a_col]).min(), pd.to_datetime(bb[b_col]).min())
+    span = np.int64(10 ** 7)                                   # days; far larger than any date range + window
+    def key(pid, d):
+        days = ((pd.to_datetime(pd.Series(d)) - t0) / DAY).to_numpy(dtype="float64")
+        return pids.get_indexer(pid).astype("int64") * span + days, np.isnan(days)
+    kb, _ = key(bb["person_id"].values, bb[b_col].values)
+    kb = np.sort(kb)
+    ka, na = key(a["person_id"].values, a[a_col].values)
+    lo = np.searchsorted(kb, ka + lo_days, side="left")
+    hi = np.searchsorted(kb, ka + hi_days, side="right")
+    return pd.Series((hi > lo) & ~na, index=a.index)
 
 
 # =============================================================================
@@ -539,6 +552,35 @@ def build_courses(rec, visits, uti_codes, merge_days=None, ind_days=None):
     return Cc
 
 
+def _coverage_runs(r, gap_days, min_days):
+    """(a) of prophylaxis_periods, vectorized: within person-agent (sorted by start), a new run starts when the
+    start is more than gap_days after the running maximum end of the current run."""
+    if r.empty:
+        return []
+    g = r[["person_id", "agent", "start_date", "rec_end"]].reset_index(drop=True)
+    grp = (g["person_id"].ne(g["person_id"].shift()) | g["agent"].ne(g["agent"].shift())).cumsum()
+    # running max end of all earlier rows in the group; a run break where start > that + gap
+    prev_max = g.groupby(grp)["rec_end"].cummax().groupby(grp).shift()
+    brk = prev_max.isna() | (g["start_date"] > prev_max + gap_days * DAY)
+    run = brk.cumsum()
+    R_ = g.groupby(run).agg(person_id=("person_id", "first"), agent=("agent", "first"),
+                            s0=("start_date", "first"), e0=("rec_end", "max"))
+    R_ = R_.loc[(R_["e0"] - R_["s0"]).dt.days >= min_days]
+    return list(zip(R_["person_id"], R_["agent"], R_["s0"], R_["e0"], ["coverage"] * len(R_)))
+
+
+def _repeat_starts(rs, starts, starts_window, course_days):
+    """(b) of prophylaxis_periods, vectorized: the first i (by date) with d[i+starts-1] - d[i] <= starts_window."""
+    if rs.empty:
+        return []
+    g = rs[["person_id", "agent", "start_date"]].sort_values(["person_id", "agent", "start_date"], kind="mergesort").reset_index(drop=True)
+    later = g.groupby(["person_id", "agent"])["start_date"].shift(-(starts - 1))
+    hit = g.loc[later.notna() & ((later - g["start_date"]).dt.days <= starts_window)].assign(end=later)
+    hit = hit.groupby(["person_id", "agent"], sort=False).first().reset_index()
+    return list(zip(hit["person_id"], hit["agent"], hit["start_date"], hit["end"] + course_days * DAY,
+                    ["repeat_starts"] * len(hit)))
+
+
 def prophylaxis_periods(rec, uti_codes, longterm_codes, min_days=90, gap_days=14, starts=3, starts_window=120):
     """P§6.5. Prophylaxis per person and agent: (a) >= min_days continuous coverage by one urinary agent allowing
     gaps <= gap_days; (b) >= starts starts of the same agent within starts_window days with no UTI code within +/-3 d
@@ -546,29 +588,11 @@ def prophylaxis_periods(rec, uti_codes, longterm_codes, min_days=90, gap_days=14
     Returns person_id, agent, p_start, p_end, rule."""
     r = rec.loc[rec["prophylaxis_agent"].notna(), ["person_id", "prophylaxis_agent", "start_date", "rec_end"]].rename(
         columns={"prophylaxis_agent": "agent"}).drop_duplicates().sort_values(["person_id", "agent", "start_date"])
-    out = []
     # (a) coverage runs
-    for (pid, ag), g in r.groupby(["person_id", "agent"]):
-        s0, e0 = None, None
-        for s, e in zip(g["start_date"], g["rec_end"]):
-            if s0 is None or s > e0 + gap_days * DAY:
-                if s0 is not None and (e0 - s0).days >= min_days:
-                    out.append((pid, ag, s0, e0, "coverage"))
-                s0, e0 = s, e
-            else:
-                e0 = max(e0, e)
-        if s0 is not None and (e0 - s0).days >= min_days:
-            out.append((pid, ag, s0, e0, "coverage"))
+    out = _coverage_runs(r, gap_days, min_days)
     # (b) repeated starts without UTI codes
-    rs = r.copy()
-    rs["no_code"] = ~near(rs.rename(columns={"start_date": "date"}), uti_codes, -3, 3).values
-    rs = rs.loc[rs["no_code"]]
-    for (pid, ag), g in rs.groupby(["person_id", "agent"]):
-        d = g["start_date"].sort_values().tolist()
-        for i in range(len(d) - starts + 1):
-            if (d[i + starts - 1] - d[i]).days <= starts_window:
-                out.append((pid, ag, d[i], d[i + starts - 1] + K.DECISIONS["D10_default_course_days"] * DAY, "repeat_starts"))
-                break
+    rs = r.loc[~near(r.rename(columns={"start_date": "date"}), uti_codes, -3, 3).values]
+    out += _repeat_starts(rs, starts, starts_window, K.DECISIONS["D10_default_course_days"])
     # (c) long-term antibiotic code with a matching prescription
     if longterm_codes is not None and len(longterm_codes):
         m = longterm_codes[["person_id", "date"]].merge(r, on="person_id")
@@ -585,19 +609,22 @@ def apply_prophylaxis_blocks(courses, proph, agent_class=None):
     if proph is None or proph.empty:
         return courses.assign(prophylaxis_block=False)
     keep = courses.copy(); keep["prophylaxis_block"] = False
-    blocks = []
-    for _, p in proph.iterrows():
-        cls = agent_class.get(p["agent"])
-        if cls is None:
-            continue
-        inside = keep["person_id"].eq(p["person_id"]) & keep["abx_class"].eq(cls) & \
-            keep["c_start"].between(p["p_start"], p["p_end"])
-        keep = keep.loc[~inside]
-        nb = max(1, int(np.ceil(((p["p_end"] - p["p_start"]).days + 1) / 90)))
-        for b in range(nb):
-            s = p["p_start"] + b * 90 * DAY
-            blocks.append({"person_id": p["person_id"], "abx_class": cls, "c_start": s, "c_end": min(s + 89 * DAY, p["p_end"]),
-                           "setting": "outpatient", "urinary": True, "n_records": np.nan, "prophylaxis_block": True})
+    P = proph.assign(abx_class=proph["agent"].map(agent_class)).dropna(subset=["abx_class"]).reset_index(drop=True)
+    if P.empty:
+        blocks = []
+    else:
+        # courses of the agent's class that start inside a period are replaced (one merge, not one scan per period)
+        m = keep[["person_id", "abx_class", "c_start"]].reset_index().merge(
+            P[["person_id", "abx_class", "p_start", "p_end"]], on=["person_id", "abx_class"])
+        drop = m.loc[(m["c_start"] >= m["p_start"]) & (m["c_start"] <= m["p_end"]), "index"].unique()
+        keep = keep.drop(index=drop)
+        nb = np.maximum(1, np.ceil((((P["p_end"] - P["p_start"]).dt.days + 1) / 90).to_numpy()).astype(int))
+        B = P.loc[P.index.repeat(nb)].reset_index(drop=True)
+        b_i = np.concatenate([np.arange(n) for n in nb])
+        B["c_start"] = B["p_start"] + pd.to_timedelta(b_i * 90, unit="D")
+        B["c_end"] = np.minimum(B["c_start"] + 89 * DAY, B["p_end"])
+        blocks = B[["person_id", "abx_class", "c_start", "c_end"]].assign(
+            setting="outpatient", urinary=True, n_records=np.nan, prophylaxis_block=True).to_dict("records")
     out = pd.concat([keep, pd.DataFrame(blocks)], ignore_index=True) if blocks else keep
     return out.drop_duplicates(["person_id", "abx_class", "c_start"]).sort_values(["person_id", "c_start"]).reset_index(drop=True)
 
