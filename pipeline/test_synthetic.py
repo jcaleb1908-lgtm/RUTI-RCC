@@ -154,6 +154,80 @@ def test_history():
 
 
 # =============================================================================
+# PART 1b. ESTIMATION TOOLS (analysis.py)
+# =============================================================================
+def test_models():
+    import statsmodels.api as sm
+    import analysis as A
+    rng = np.random.default_rng(3)
+    n = 3000
+    x1, x2 = rng.normal(size=n), rng.binomial(1, .4, n)
+    Tt = rng.exponential(1 / np.exp(0.5 * x1 - 0.7 * x2))
+    Cn = rng.exponential(1.5, n)
+    t = np.round(np.minimum(Tt, Cn), 2) + 0.01
+    e = (Tt <= Cn).astype(int)
+    en = np.where(rng.random(n) < .3, t * rng.random(n) * 0.9, 0)
+    X = np.column_stack([x1, x2])
+    st = rng.integers(0, 3, n)
+    for lab, kw, skw in (("plain", {}, {}), ("delayed entry", {"entry": en}, {"entry": en}), ("strata", {"strata": st}, {"strata": st})):
+        f = A.cox(t, e, X, **kw)
+        m = sm.PHReg(t, X, status=e, ties="breslow", **skw).fit(groups=np.arange(n))
+        check(f"cox: matches statsmodels PHReg (Breslow, robust SE), {lab}",
+              np.allclose(f["beta"], m.params, atol=1e-6) and np.allclose(f["se"], m.bse, rtol=1e-4), f"{f['beta']} {m.params}")
+    w = rng.integers(1, 4, n)
+    rep = np.repeat(np.arange(n), w)
+    f, g = A.cox(t, e, X, w=w), A.cox(t[rep], e[rep], X[rep], cluster=rep)
+    check("cox: integer weights = replicated rows clustered by person (beta and robust SE)",
+          np.allclose(f["beta"], g["beta"], atol=1e-7) and np.allclose(f["se"], g["se"], rtol=1e-5))
+    # IPTW recovers a known marginal HR under confounding
+    n2 = 20000
+    z = rng.normal(size=n2)
+    a = rng.binomial(1, 1 / (1 + np.exp(-(z - 0.3))))
+    T2 = rng.exponential(1 / (0.05 * np.exp(np.log(1.5) * a + 0.8 * z)))
+    C2 = rng.uniform(0, 30, n2)
+    t2, e2 = np.minimum(T2, C2), (T2 <= C2).astype(int)
+    sw, info = A.ps_weights(pd.Series(np.where(a == 1, "x", "r")), pd.DataFrame({"z": z}), ["r", "x"])
+    crude = A.cox(t2, e2, a[:, None])
+    fw = A.cox(t2, e2, a[:, None], w=sw)
+    adj = A.cox(t2, e2, np.column_stack([a, z]))
+    check("iptw: weighted HR moves from the confounded crude HR toward the conditional HR 1.5",
+          abs(np.exp(fw["beta"][0]) - 1.5) < abs(np.exp(crude["beta"][0]) - 1.5) and abs(np.exp(adj["beta"][0]) - 1.5) < 0.1,
+          f"crude {np.exp(crude['beta'][0]):.2f} iptw {np.exp(fw['beta'][0]):.2f} adj {np.exp(adj['beta'][0]):.2f}")
+    bt = A.balance(pd.DataFrame({"z": z}), np.where(a == 1, "x", "r"), "x", "r", sw)
+    check("iptw: weighted |SMD| < 0.1 and smaller than unweighted",
+          abs(bt["smd_weighted"].iloc[0]) < 0.1 < abs(bt["smd_unweighted"].iloc[0]), str(bt.to_dict("records")))
+    # Aalen-Johansen = 1 - KM without competing events; with competing, CIF1 + CIF2 = 1 - KM(all causes)
+    from statsmodels.duration.survfunc import SurvfuncRight
+    sf = SurvfuncRight(t, e)
+    aj = A.aalen_johansen(t, e, at=(0.5, 1.0))
+    km = 1 - sf.surv_prob[np.searchsorted(sf.surv_times, [0.5, 1.0], side="right") - 1]
+    check("aalen-johansen: equals 1 - Kaplan-Meier with no competing event", np.allclose(aj["cif"].values, km))
+    cause = np.where(e == 1, np.where(rng.random(n) < .6, 1, 2), 0)
+    c1 = A.aalen_johansen(t, cause, at=(1.0,))["cif"].iloc[0]
+    c2 = A.aalen_johansen(t, np.where(cause == 2, 1, np.where(cause == 1, 2, 0)), at=(1.0,))["cif"].iloc[0]
+    check("aalen-johansen: CIF1 + CIF2 = 1 - KM(any cause)", abs(c1 + c2 - km[1]) < 1e-9)
+    # Fine-Gray rows with no competing events = ordinary Cox
+    Fd = pd.DataFrame({"person_id": np.arange(n), "t_years": t, "cause": e, "x1": x1, "x2": x2})
+    Rw = A.fine_gray_rows(Fd)
+    fg = A.cox(Rw["stop"], Rw["event"], Rw[["x1", "x2"]].values, w=Rw["fg_w"], entry=Rw["start"], cluster=Rw["person_id"])
+    check("fine-gray: with no competing event equals the Cox model", np.allclose(fg["beta"], A.cox(t, e, X)["beta"], atol=1e-8))
+    # time-varying split: counts valid on (start, stop], event on the last row
+    Fp = pd.DataFrame({"person_id": [1, 2], "t_years": [5.0, 3.0], "event": [1, 0], "age": [50, 60]})
+    ch = pd.DataFrame({"person_id": [1, 1, 1, 2], "u": [-1.0, 2.0, 2.0, 4.0], "var": ["k", "k", "k", "k"]})
+    Rs = A.split_cumulative(Fp, ch, ["k"])
+    check("split_cumulative: baseline count, two increments at the same time, change after exit ignored",
+          Rs[["person_id", "start", "stop", "k", "event"]].values.tolist() == [[1, 0.0, 2.0, 1, 0], [1, 2.0, 5.0, 3, 1], [2, 0.0, 3.0, 0, 0]],
+          str(Rs[["person_id", "start", "stop", "k", "event"]].values.tolist()))
+    # MICE (PMM): imputed values are observed values; observed values untouched
+    Tm = pd.DataFrame({"y": np.where(rng.random(500) < .3, np.nan, np.round(rng.normal(25, 4, 500), 1))})
+    Z = A.mice_pmm(Tm, rng.normal(size=(500, 2)), m=3, iters=2)
+    check("mice: PMM draws only observed values and keeps observed rows",
+          all(set(z.loc[Tm["y"].isna(), "y"]) <= set(Tm["y"].dropna()) and z.loc[Tm["y"].notna(), "y"].equals(Tm["y"].dropna()) for z in Z))
+    r = A.reri(np.log([1.5, 1.2, 2.0]), np.eye(3) * 0.01)
+    check("reri: 2.0 - 1.5 - 1.2 + 1 = 0.3", abs(r[0] - 0.3) < 1e-9)
+
+
+# =============================================================================
 # PART 2. SYNTHETIC CDR + END-TO-END RUN
 # =============================================================================
 def concrete(code):
@@ -366,6 +440,7 @@ def test_end_to_end():
     code_hash = hashlib.sha256(b"test").hexdigest()[:12]
     for cell in ["F00_setup", "F01_inventory", "F02_extract", "F03_phenotypes", "F04_cohorts"]:
         C.STATE["failed"] = []
+        C.CFG["footnote_extra"] = f"code {code_hash}"
         exec(compile((HERE / f"{cell}.py").read_text(), cell, "exec"), {"RUN_CONTROL": RUN_CONTROL, "CODE_HASH": code_hash,
                                                                         "__name__": "__main__"})
         check(f"end-to-end: {cell} ran with no failed part", not C.STATE["failed"], "; ".join(C.STATE["failed"]))
@@ -394,11 +469,47 @@ def test_end_to_end():
     check("disclosure: ALL_TABLES.txt has no person_id column", "person_id" not in txt)
     check("blind: no event count by exposure group in F04 tables",
           not any("event" in c for f in (run / "tables").glob("F04_table1.csv") for c in pd.read_csv(f).columns))
+    # ---- freeze gate, then the outcome cells on the synthetic data
+    import outcomes as O
+    model_cells = ["F05_main", "F06_timevarying", "F07_missing", "F08_modification", "F09_sensitivity", "F10_results"]
+    K.RUN["blind_frozen_output"] = ""
+    try:
+        exec(compile((HERE / "F05_main.py").read_text(), "F05_main", "exec"), {"RUN_CONTROL": RUN_CONTROL, "CODE_HASH": code_hash, "__name__": "__main__"})
+        stopped = False
+    except RuntimeError as ex:
+        stopped = "freeze gate" in str(ex)
+    check("freeze gate: F05 stops while no frozen blind output is named", stopped)
+    frozen = tmp / "frozen_blind_output.txt"
+    frozen.write_text((run / "tables" / "ALL_TABLES.txt").read_text().replace(f"code {code_hash}", "code 000000000000"))
+    K.RUN["blind_frozen_output"] = str(frozen)
+    try:
+        O.freeze_check(); stopped = False
+    except RuntimeError:
+        stopped = True
+    check("freeze gate: F05 stops when the frozen output came from different F04 code", stopped)
+    frozen.write_text((run / "tables" / "ALL_TABLES.txt").read_text())
+    # Synthetic data have few events: lower the >= 21 events rule so every model path runs. Masking (hide_max 20)
+    # is unchanged, and the disclosure scan below still applies to every table.
+    O.MIN_EV, K.DECISIONS["D15_subgroup_min_events"], K.DECISIONS["D15_subgroup_min_per_cell"] = 1, 1, 1
+    K.ANALYSIS.update(mice_m=2, mice_m_sensitivity=2, mice_iters=2, cif_bootstrap=5)
+    for cell in model_cells:
+        C.STATE["failed"] = []
+        exec(compile((HERE / f"{cell}.py").read_text(), cell, "exec"), {"RUN_CONTROL": RUN_CONTROL, "CODE_HASH": code_hash,
+                                                                        "__name__": "__main__"})
+        check(f"end-to-end: {cell} ran with no failed part", not C.STATE["failed"], "; ".join(C.STATE["failed"]))
+    res = C.load_state("results", internal=False)
+    check("end-to-end: primary Q1 and Q2 hazard ratios were estimated",
+          res.loc[res["analysis_id"].isin(["A5", "A5b"]) & res["status"].eq("shown")].shape[0] >= 2,
+          str(res.loc[res["analysis_id"].isin(["A5", "A5b"]), ["contrast", "status"]].values.tolist()))
+    check("end-to-end: results registry has no count columns",
+          not any(re.search(C.COUNT_RX, c) for c in res.columns), str([c for c in res.columns if re.search(C.COUNT_RX, c)]))
+    bad = scan_tables(run)
+    check("disclosure: no saved table (F00-F10) shows a count 1-20", not bad, ", ".join(bad[:10]))
 
 
 if __name__ == "__main__":
     for t in [test_code_rx, test_episodes, test_recurrence, test_courses, test_prophylaxis, test_rcc, test_egfr, test_history,
-              test_end_to_end]:
+              test_models, test_end_to_end]:
         print(f"\n## {t.__name__}")
         t()
     print("\n" + ("all tests passed" if not FAILS else f"{len(FAILS)} FAILED: " + "; ".join(FAILS)))

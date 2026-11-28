@@ -1,4 +1,4 @@
-> Converted to Markdown on 2026-11-27 from "Pre-cohort protocol v0.1.docx" (pandoc). Text unchanged. Status: draft for PI review, NOT signed. The signed version and its commit SHA become the prespecification stamp (STUDY-LIFECYCLE freeze line).
+> Converted to Markdown on 2026-11-27 from "Pre-cohort protocol v0.1.docx" (pandoc). Text unchanged. Status: **decisions D1–D21 approved by the PI on 2026-11-28, all as proposed** (reported by Jonathan; written signature pending). The approved version and its commit SHA become the prespecification stamp (STUDY-LIFECYCLE freeze line).
 >
 > **Revisions 2026-11-28 (team, before signature; from the first All of Us data checks, no outcome data seen):** urine culture also by SNOMED (5.3); code systems explained (Appendix A); cataract negative control limited to cataract codes, 366.11 removed (D14, A.1); nephroureterectomy kept as a confirming procedure with a sensitivity analysis without it (8.3); survey groupings for education and income and one rule for skipped answers (9.4); codes for the groups named in 9.1–9.4 written out (A.1, A.5); Appendix D sheet simplified.
 

@@ -14,13 +14,13 @@ Rules for this file
 """
 
 PROJECT = "RUTI-RCC"
-PIPELINE_VERSION = "RUTI-RCC-2026.11.27-v0.1"      # protocol v0.1 defaults, not yet PI-signed
-PROTOCOL_VERSION = "Pre-cohort protocol v0.1 (2026-11-19), unsigned"
+PIPELINE_VERSION = "RUTI-RCC-2026.11.28-v0.2"      # protocol v0.1 decisions, PI-approved 2026-11-28
+PROTOCOL_VERSION = "Pre-cohort protocol v0.1 (2026-11-19, revised 2026-11-28); D1-D21 PI-approved 2026-11-28"
 CDR_EXPECTED = "C2025Q4R6"                         # P§14: v9 Controlled Tier; data through 2025-01-01
 CDR_CUTOFF = "2025-01-01"                          # M17: every date checked against it
 
 # ---------------------------------------------------------------------------------------------------------
-# PI DECISIONS (P§16). Defaults = the protocol's "Proposed". Change only through AMENDMENTS (after signature).
+# PI DECISIONS (P§16). The protocol's "Proposed" values, approved by the PI on 2026-11-28. Change only by AMENDMENT.
 # ---------------------------------------------------------------------------------------------------------
 DECISIONS = {
     "D2_q1_time_zero": "landmark_365",          # alt: "sequential_trials", "time_varying"
@@ -307,7 +307,33 @@ SMD_PAIRS = {"Q1": [("recurrent", "single")], "Q2": [("B", "A"), ("C", "A"), ("D
 # ---------------------------------------------------------------------------------------------------------
 # RUN SETTINGS
 # ---------------------------------------------------------------------------------------------------------
+# ---------------------------------------------------------------------------------------------------------
+# OUTCOME MODELS (F05-F10). Choices the protocol leaves to the analyst are README open items O15-O19.
+# ---------------------------------------------------------------------------------------------------------
+ANALYSIS = {
+    "min_events_per_arm": DECISIONS["D15_subgroup_min_per_cell"],   # an HR is shown only if each compared arm has >= 21
+    "ps_truncate_pct": (1, 99),       # O15: stabilized IPTW truncated at the 1st and 99th percentiles
+    "site_stratum": True,             # P§9.2: EHR site as Cox stratum in the primary model (A14 shows it unstratified)
+    "mice_m": 20,                     # P§12.2 #8 / D16: primary
+    "mice_m_sensitivity": 5,          # O16: imputations for sensitivity and secondary models (compute)
+    "mice_iters": 5,
+    "mice_fit_rows": 50000,           # O16: rows sampled to fit each imputation model (donors are all observed rows)
+    "cif_times": (5.0, 10.0),         # years after outcome counting starts (P§2.1)
+    "cif_bootstrap": 100,             # per imputation
+    "ph_split_years": 3.0,            # period HRs 2-5 and > 5 years after T0 = 0-3 and > 3 years after S (P§12.2 #6)
+    "count_covariates_log1p": ["visits_prior_year", "imaging_prior_3y", "prior_uti_episodes", "prior_abx_courses"],
+    "q2b_course_bins": [0, 1, 2, 6],  # D10: 0 / 1 / 2-5 / >= 6 cumulative courses
+    "well_observed_history_years": 5,
+}
+ORDINAL_LEVELS = {     # imputation order (P§9.4 groupings approved 2026-11-28)
+    "education": ["Less than high school", "High school or GED", "Some college", "College graduate", "Advanced degree"],
+    "income": ["<25k", "25-50k", "50-100k", "100-200k", ">=200k"],
+}
+
 RUN = {
+    # Freeze gate (STUDY-LIFECYCLE stage 8; P§12.1): file name in workbench_outputs/ of the blind F00-F04 output.
+    # F05-F10 stop until it is set, the file is in the repo and its F04 code hash matches this run's F04.
+    "blind_frozen_output": "",
     "max_gib": 60,                 # refuse a query that would scan more (q(max_gib=))
     "bucket_name": "",             # workspace bucket resource id; run folder goes there (WORKBENCH-2.0-GUIDE §4)
     "cdr_resource": "",            # data collection resource id for `wb resolve` (WORKBENCH-2.0-GUIDE §2)

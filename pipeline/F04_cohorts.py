@@ -1,12 +1,13 @@
 ##### BEGIN F04 cohorts, Table 1 and feasibility gate (BLIND) #####
 # Builds the Q1 and Q2 analysed cohorts with protocol defaults. BLIND (STUDY-LIFECYCLE stage 7-8, P§12.1):
-# events are shown in total only, never by exposure group, and no model is fitted. Outcome models (F05+) are
-# written only after the PI signs the protocol and this output is frozen.
+# events are shown in total only, never by exposure group, and no model is fitted. The outcome models (F05-F10)
+# refuse to run until this output is saved in workbench_outputs/ and named in _config.RUN["blind_frozen_output"].
 import numpy as np
 import pandas as pd
 import aou_core as C
 import _config as K
 import cohort as B
+import outcomes as O
 
 C.begin("F04", "cohorts, Table 1, feasibility (blind)")
 NAMES = ["dx", "px", "drug", "visits", "labs", "persons", "death", "enroll", "survey", "ehr_span", "activity_months",
@@ -121,5 +122,6 @@ def p_gate():
     C.show("gate", "Feasibility gate (D17 and events per parameter; blind totals)", pd.DataFrame(rows), counts=["events"],
            deps={"epp": ["events"]}, note="epp = events per parameter; blanked when events are masked.")
 C.part("3 feasibility gate", p_gate)
+O.stamp_f04(globals().get("CODE_HASH", ""))     # F05+ check that the frozen output came from this F04
 C.end()
 ##### END F04 #####
