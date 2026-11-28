@@ -334,7 +334,7 @@ RUN = {
     # Freeze gate (STUDY-LIFECYCLE stage 8; P§12.1): file name in workbench_outputs/ of the blind F00-F04 output.
     # F05-F10 stop until it is set, the file is in the repo and its F04 code hash matches this run's F04.
     "blind_frozen_output": "",
-    "max_gib": 60,                 # refuse a query that would scan more (q(max_gib=))
+    "max_gib": 150,                # EHR span scans ~76 GiB in v9 (2026-11-28 run); about USD 0.50 per scan on demand                 # refuse a query that would scan more (q(max_gib=))
     "bucket_name": "",             # workspace bucket resource id; run folder goes there (WORKBENCH-2.0-GUIDE §4)
     "cdr_resource": "",            # data collection resource id for `wb resolve` (WORKBENCH-2.0-GUIDE §2)
 }

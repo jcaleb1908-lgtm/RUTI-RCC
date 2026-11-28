@@ -308,7 +308,8 @@ def build_cdr(seed=7, n=600):
         CO.append((next(oid), p, d, code_id[(vocab, code)], next(vid) if False else None))
 
     def rx(p, d, nm, form="100 MG Oral Tablet", days=7, typ="Prescription written", cid_=None):
-        DE.append((next(oid), p, cid_ or drug_id[(nm, form)], d, d + pd.Timedelta(days=days), days, None, dtype[typ]))
+        DE.append((next(oid), p, cid_ or drug_id[(nm, form)], d, d + pd.Timedelta(days=days),
+                   None if rng.random() < .2 else days, None, dtype[typ]))      # some records without days supply
     for p in range(1, n + 1):
         yob = int(rng.integers(1935, 1970)); male = rng.random() < 0.4
         P.append((p, yob, int(rng.integers(1, 13)), 15, None, gend["MALE" if male else "FEMALE"]))
@@ -355,7 +356,10 @@ def build_cdr(seed=7, n=600):
             dx(p, e1 - pd.Timedelta(days=50), "ICD10CM" if e1 >= T(K.ICD10_START) else "ICD9CM",
                "C50*".replace("*", "0") if e1 >= T(K.ICD10_START) else "174*".replace("*", "0"))
         if rng.random() < .05:
-            DEATH.append((p, e1 + pd.Timedelta(days=int(rng.integers(800, 4000))), True))
+            dd = e1 + pd.Timedelta(days=int(rng.integers(800, 4000)))
+            DEATH.append((p, dd, True))
+            if rng.random() < .3:                                   # v9: some persons have two primary records
+                DEATH.append((p, dd + pd.Timedelta(days=30), True))
         if rng.random() < .1:
             PO.append((next(oid), p, e1 - pd.Timedelta(days=300), code_id[("CPT4", "74176")], code_id[("CPT4", "74176")]))
     # CO visit ids, ext tables
@@ -413,7 +417,12 @@ def make_q(db):
         for p in sorted(prms, key=lambda p: -len(p.name)):
             s = s.replace("@" + p.name, ("[" + ", ".join(lit(v) for v in p.value) + "]") if p.array else lit(p.value))
         s = sqlglot.transpile(s, read="bigquery", write="duckdb")[0]
-        return db.execute(s).df()
+        d = db.execute(s).df()
+        # BigQuery's to_dataframe gives nullable Int64 for INTEGER columns (pd.NA, not NaN): mimic it (M40)
+        for c in d.columns:
+            if pd.api.types.is_integer_dtype(d[c]) or c in ("days_supply", "quantity"):
+                d[c] = pd.to_numeric(d[c], errors="coerce").round().astype("Int64")
+        return d
     return q_override
 
 

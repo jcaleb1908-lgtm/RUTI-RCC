@@ -214,6 +214,14 @@ def q(sql, prms=(), label="query", max_gib=None):
             out = job.to_dataframe(create_bqstorage_client=True)
         except Exception:
             out = job.to_dataframe(create_bqstorage_client=False)
+    # BigQuery returns nullable Int64 / boolean columns (pd.NA): comparisons on them raise "boolean value of NA is
+    # ambiguous". Normalize to numpy dtypes: int64 without missing values, float64 (NaN) with them (M40).
+    for c in out.columns:
+        dt = out[c].dtype
+        if isinstance(dt, pd.api.extensions.ExtensionDtype) and (pd.api.types.is_integer_dtype(dt) or pd.api.types.is_float_dtype(dt)):
+            out[c] = out[c].astype("int64") if not out[c].isna().any() and pd.api.types.is_integer_dtype(dt) else out[c].astype("float64")
+        elif str(dt) == "boolean":
+            out[c] = out[c].astype(object).where(out[c].notna(), None) if out[c].isna().any() else out[c].astype(bool)
     print(f"   {label}: {len(out):,} rows in {time.time() - t0:.0f} s", flush=True)
     return out
 
@@ -348,9 +356,14 @@ def enrollment_dates():
 def death_dates():
     """person_id -> death_date from the primary death record. Stops if the flag is not unique per person."""
     d = q(PRIMARY_DEATH_SQL, [], "primary death record")
-    if d["person_id"].duplicated().any():
-        raise ValueError("aou_death: more than one primary_death_record per person")
     d["death_date"] = to_date(d["death_date"])
+    dup = d["person_id"].duplicated(keep=False)
+    if dup.any():
+        # v9 (C2025Q4R6) has persons with more than one row flagged primary: keep the earliest date (M40).
+        n = int(d.loc[dup, "person_id"].nunique())
+        print(f"   note: {'<=20' if 1 <= n <= hide_max() else n} persons have more than one primary death record; "
+              "the earliest date is used")
+        d = d.sort_values(["person_id", "death_date"]).drop_duplicates("person_id", keep="first")
     return d.set_index("person_id")["death_date"]
 
 

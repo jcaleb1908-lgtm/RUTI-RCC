@@ -483,7 +483,7 @@ def antibiotic_records(drug, gloss):
     d = drug.merge(g, left_on="drug_concept_id", right_on="concept_id", how="inner")
     d["abx_class"] = d["abx_classes"].str.split("+")
     d = d.explode("abx_class")
-    ds = pd.to_numeric(d["days_supply"], errors="coerce")
+    ds = pd.to_numeric(d["days_supply"], errors="coerce").astype(float)     # BigQuery Int64 with NA -> float NaN
     d["rec_end"] = np.where(ds > 0, d["start_date"] + pd.to_timedelta(ds.fillna(0), unit="D"),
                             d["start_date"] + K.DECISIONS["D10_default_course_days"] * DAY)
     d["rec_end"] = pd.to_datetime(d["rec_end"])
