@@ -293,7 +293,8 @@ def results(out, tabs, figdir, captions, code_hash):
     s = [Paragraph("Results by question", H1), p(STUDY, BODY),
          p("Every estimate is exploratory: the feasibility gate (D17) needs >= 100 events for a reduced analysis and >= 300 for a "
            "confirmatory one, and the blind freeze was waived by the PI (DEV1, DEV2). A hazard ratio is shown only when each "
-           "compared arm has >= 21 events; otherwise the analysis stays descriptive.", SMALL), Spacer(1, 6)]
+           "compared arm has >= 21 events; otherwise the analysis stays descriptive. In the event columns, <=20 marks a count "
+           "of 1-20 or a larger count hidden so that a small count cannot be derived from a total.", SMALL), Spacer(1, 6)]
     desc = descriptive_rows(tabs)
     if desc:
         s += [Paragraph("Descriptive results that can be reported", H2),
@@ -311,7 +312,7 @@ def results(out, tabs, figdir, captions, code_hash):
         if hr is not None:
             d = hr["df"].loc[~hr["df"]["group"].str.contains("living in Puerto Rico")]
             s += [Spacer(1, 4), p("Person-years and RCC events by Hispanic and Puerto Rican group (A20). Rows for Puerto Ricans living "
-                                  "in Puerto Rico are left out: <= 20 such persons per exposure group (Table 1).", SMALL),
+                                  "in Puerto Rico are left out because several of those groups are very small.", SMALL),
                   styled_table([list(d.columns)] + d.astype(str).values.tolist(), font=6.5)]
         s.append(PageBreak())
     if ans is not None:
