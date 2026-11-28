@@ -144,7 +144,9 @@ def drug_glossary(ing, desc):
     g["abx_classes"] = g["ingredient"].map(classes)
     g["form"] = g["concept_name"].map(classify_drug_form)
     g["is_abx"] = g["abx_classes"].map(len).gt(0)
-    oral_vanco = g["ingredient"].map(lambda s: "vancomycin" in s) & g["concept_name"].str.contains(K.ORAL_FORM_RX, case=False, regex=True)
+    # Oral vancomycin is not systemic. Use the classified form, not the name alone: "Injectable Suspension" is IV
+    # vancomycin and is counted (2026-11-28 F00.12 found 290+ IV products wrongly excluded by the name match).
+    oral_vanco = g["ingredient"].map(lambda s: "vancomycin" in s) & g["form"].eq("oral")
     nonabs = g["ingredient"].map(lambda s: bool(set(s) & set(K.NONABSORBED))) | oral_vanco
     g["abx_counted"] = g["is_abx"] & g["form"].ne("non_systemic") & ~nonabs
     g["urinary_active"] = g["abx_counted"] & g["ingredient"].map(lambda s: bool(set(s) & ua))

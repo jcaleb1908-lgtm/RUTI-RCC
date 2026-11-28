@@ -63,7 +63,7 @@ Every D1–D21 decision is a named switch in `pipeline/_config.py` `DECISIONS`, 
 | O10 | Survey PPI codes | **Confirmed 2026-11-28 (F01.6–9):** all six `SURVEY_ITEMS` codes exist and race and sex crosswalks are complete. The Puerto Rican subgroup answer is released (`HispanicSpecific_PuertoRican`). Education and income crosswalks added with **proposed** groupings | Valeria / PI: approve the education and income groupings |
 | O11 | Person-level "data available" rule measured by month (≥1 EHR condition and ≥1 EHR drug record in the 36 months before T0) | month precision | note |
 | O12 | People whose ESRD date falls before outcome counting starts are left out of the analysed cohort, like death | yes | PI |
-| O13 | Protocol code lists that F00.2 shows reach codes that may not fit (kept as written, since the protocol lists them): E66.3 *Overweight* inside obesity (E66.x); 366.11 *Pseudoexfoliation of lens capsule* inside the cataract NCO (366.10–366.19); N02.B* *IgA nephropathy* inside hematuria (N02.x; before 2023 IgA nephropathy was coded N02.8, so dropping N02.B makes eras unequal); 55.51 *Nephroureterectomy* as a confirming procedure | as written | Valeria (Appendix D) |
+| O13 | Protocol code lists that F00.2 shows reach codes that may not fit. **Settled 2026-11-28 (Jonathan):** keep E66.3 *Overweight* (moot: BMI category comes from measured BMI, and the obesity codes are not used in the models) and keep N02.B* *IgA nephropathy* in hematuria (it causes hematuria). **Still open:** 366.11 *Pseudoexfoliation of lens capsule* inside the cataract NCO (366.10–366.19); 55.51 *Nephroureterectomy* as a confirming procedure | as written | Valeria (366.11, 55.51) |
 | O14 | Urine culture (P§5.3 "LOINC found by name"): 630-4 plus 13315-7 and the "Bacteria # 2–8" LOINCs; reflex-culture panels and viral or mycobacterial cultures left out. SNOMED 104193001, 104194007 and 117010004 (≈ 9.3k, 3.0k and 2.7k persons) added as a proposal | in `_config.py` | Valeria |
 
 ## 5. Limitations (candidates, L#)
@@ -75,6 +75,7 @@ L1 volunteer cohort (AL1) · L2 partial EHR capture: outpatient antibiotics and 
 | Run ID | Date (UTC) | Code hash | Commit | CDR | Cells | Ended | Output | Kept? |
 |---|---|---|---|---|---|---|---|---|
 | first F00+F01 | 2026-11-28 | `151a1d6eb424` | `872100a` | C2025Q4R6 | F00, F01 | ok | `workbench_outputs/2026-11-28_F00-F01_output.txt` | yes |
+| F00+F01 rerun | 2026-11-28 | `a58e5386e92a` | `d368550` | C2025Q4R6 | F00, F01 | ok, but `_config`/`rutirc` were still the first run's (kernel not restarted) | `workbench_outputs/2026-11-28_F00-F01_rerun_output.txt` | partial: F00.12 and F01.11 only |
 
 ## 7. Provenance
 

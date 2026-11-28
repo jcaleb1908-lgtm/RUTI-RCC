@@ -17,6 +17,9 @@ RUN_CONTROL = {"new_run": True, "resume_from": None, "run_only": None}   # e.g. 
 
 P = REPO / "pipeline"
 sys.path.insert(0, str(P))
+# Forget modules from an earlier run in this kernel, so a `git pull` takes effect without a kernel restart.
+for _m in ("aou_core", "_config", "rutirc", "cohort"):
+    sys.modules.pop(_m, None)
 import aou_core as C  # noqa: E402
 CODE_HASH = hashlib.sha256(b"".join((P / f).read_bytes() for f in sorted(
     x.name for x in P.glob("*.py") if not x.name.startswith("test_")))).hexdigest()[:12]
