@@ -55,14 +55,16 @@ Every D1–D21 decision is a named switch in `pipeline/_config.py` `DECISIONS`, 
 | O2 | Does an *unconfirmed* coded episode in the prior 365 d block E1? | yes (conservative) | PI |
 | O3 | "≥2 episodes within 180 days": ≤ 180 or < 180 | ≤ 180 | PI |
 | O4 | Q2 "≥2 classes within ±3 d": among A–G or only the compared classes | A–G | PI |
-| O5 | Which src_id values count as EHR (`^EHR site`) | check in F01 table 2 | Jonathan, after F01 |
-| O6 | Day of birth when only month/year (day 15) | check in F01 table 1 | Jonathan, after F01 |
+| O5 | Which src_id values count as EHR (`^EHR site`) | **Checked 2026-11-28 (F01.2):** `EHR site #` = 69 sites, counted. "Participant Mediated EHR" (PTSC, TPC, CLAD) and the portals are **not** counted as EHR. | PI to confirm that participant-mediated EHR stays out |
+| O6 | Day of birth when only month/year (day 15) | **F01.1:** `day_of_birth` is empty for all 747,029 persons, but `birth_datetime` is filled for all, and the code uses it. The next F01 run shows whether `birth_datetime` holds real days or a placeholder (Jan 1 / day 15) | Jonathan, next F01 |
 | O7 | RCC diagnosis date = earliest RCC code (literal §8.4), not the code that met confirmation | literal | PI |
 | O8 | ≥2 RCC codes that don't meet 30–365 d (e.g. 4 d apart) | "possible" | PI |
 | O9 | Codes the protocol names by group only, added as proposals: antihypertensive / glucose-lowering / steroid / immunosuppressant by ATC (C02–C09, A10, H02AB, L04); resistant organism Z16 / V09; transplant status Z94.0, T86.1, V42.0, 996.81 (invalidates confirming procedures); LOINC creatinine 2160-0 and 38483-4, HbA1c 4548-4 and 17856-6, BMI 39156-5, urine culture 630-4 | in `_config.py`, name-checked in F00 | Valeria (Appendix D) |
-| O10 | Survey PPI codes in `SURVEY_ITEMS` and `CROSSWALKS` are **[UNCONFIRMED]**. Education, income and the Hispanic subgroup have no crosswalk yet | F01 prints the inventory; F02 uses only codes found | Jonathan / Valeria after F01 |
+| O10 | Survey PPI codes | **Confirmed 2026-11-28 (F01.6–9):** all six `SURVEY_ITEMS` codes exist and race and sex crosswalks are complete. The Puerto Rican subgroup answer is released (`HispanicSpecific_PuertoRican`). Education and income crosswalks added with **proposed** groupings | Valeria / PI: approve the education and income groupings |
 | O11 | Person-level "data available" rule measured by month (≥1 EHR condition and ≥1 EHR drug record in the 36 months before T0) | month precision | note |
 | O12 | People whose ESRD date falls before outcome counting starts are left out of the analysed cohort, like death | yes | PI |
+| O13 | Protocol code lists that F00.2 shows reach codes that may not fit (kept as written, since the protocol lists them): E66.3 *Overweight* inside obesity (E66.x); 366.11 *Pseudoexfoliation of lens capsule* inside the cataract NCO (366.10–366.19); N02.B* *IgA nephropathy* inside hematuria (N02.x; before 2023 IgA nephropathy was coded N02.8, so dropping N02.B makes eras unequal); 55.51 *Nephroureterectomy* as a confirming procedure | as written | Valeria (Appendix D) |
+| O14 | Urine culture (P§5.3 "LOINC found by name"): 630-4 plus 13315-7 and the "Bacteria # 2–8" LOINCs; reflex-culture panels and viral or mycobacterial cultures left out. SNOMED 104193001, 104194007 and 117010004 (≈ 9.3k, 3.0k and 2.7k persons) added as a proposal | in `_config.py` | Valeria |
 
 ## 5. Limitations (candidates, L#)
 
@@ -72,6 +74,7 @@ L1 volunteer cohort (AL1) · L2 partial EHR capture: outpatient antibiotics and 
 
 | Run ID | Date (UTC) | Code hash | Commit | CDR | Cells | Ended | Output | Kept? |
 |---|---|---|---|---|---|---|---|---|
+| first F00+F01 | 2026-11-28 | `151a1d6eb424` | `872100a` | C2025Q4R6 | F00, F01 | ok | `workbench_outputs/2026-11-28_F00-F01_output.txt` | yes |
 
 ## 7. Provenance
 

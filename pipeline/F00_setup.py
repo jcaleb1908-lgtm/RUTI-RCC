@@ -72,6 +72,9 @@ def p_drugs():
     C.show("7", "Antibiotic drug concepts by class, dose form and whether counted", t, counts=[])
     C.show("8", "Products in two antibiotic classes (read; counted in each)", G.loc[G["multi_class"], ["concept_name", "abx_classes"]],
            counts=[])
+    C.show("12", "Systemic-form antibiotic concepts NOT counted (read: oral vancomycin and non-absorbed are expected)",
+           G.loc[G["is_abx"] & G["form"].ne("non_systemic") & ~G["abx_counted"], ["concept_name", "abx_classes", "form"]]
+           .head(200), counts=[])
     C.show("9", "Forms classified unknown (read; counted as systemic)",
            G.loc[G["is_abx"] & G["form"].eq("unknown_form"), ["concept_name", "abx_classes"]].head(200), counts=[])
     # ATC covariate groups -> drug descendants

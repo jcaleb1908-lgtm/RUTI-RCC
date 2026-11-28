@@ -219,7 +219,7 @@ def build_cdr(seed=7, n=600):
             if a not in ppi:
                 ppi[a] = add(a, a.split("_")[-1], "PPI", "Observation", "Answer", "S")
     ppi["Hispanic_PuertoRican"] = add("Hispanic_PuertoRican", "Puerto Rican", "PPI", "Observation", "Answer", "S")
-    ppi["Smoke_Yes"] = add("Smoke_Yes", "Yes", "PPI", "Observation", "Answer", "S")
+    ppi["Smoke_Yes"] = add("100CigsLifetime_Yes", "100 Cigs Lifetime: Yes", "PPI", "Observation", "Answer", "S")
     consent = add("ConsentPII", "Consent PII", "PPI", "Observation", "Module", "S")
     anc.append((consent, consent, 0, 0))
 

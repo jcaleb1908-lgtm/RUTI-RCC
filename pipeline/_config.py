@@ -93,21 +93,24 @@ DX = {
     "RCC": dict(role="O", icd10=["C64*"], icd9=["189.0"], rx=r"kidney|renal"),
     "RENAL_PELVIS_CA": dict(role="O", icd10=["C65*"], icd9=["189.1"], rx=r"pelvis"),
     "URETER_CA": dict(role="O", icd10=["C66*"], icd9=["189.2"], rx=r"ureter"),
-    "BLADDER_CA": dict(role="O", icd10=["C67*"], icd9=["188*"], rx=r"bladder"),
+    "BLADDER_CA": dict(role="O", icd10=["C67*"], icd9=["188*"], rx=r"bladder|urachus|ureteric orifice"),
     "RENAL_MASS": dict(role="D", icd10=["D30.0*", "D41.0*", "R93.42*"], icd9=[], rx=r"kidney|renal"),
     # P§4 exclusions
     "HX_KIDNEY_CA": dict(role="X", icd10=["Z85.52*"], icd9=["V10.52", "V10.53"], rx=r"kidney|renal"),
     "OTHER_CANCER": dict(role="X", icd10=[f"C{i:02d}*" for i in range(0, 97)] + ["C4A*", "C7A*", "C7B*", "D09.0", "D09.1*", "Z85*"],
                          icd10_exclude=["C44*", "Z85.828"],
                          icd9=[f"{i}*" for i in range(140, 209)] + ["209.0*", "209.1*", "209.2*", "209.3*", "V10*"],
-                         icd9_exclude=["173*", "V10.83"], rx=r"malignan|neoplasm|cancer|carcinoma|lymphoma|leukemia|myeloma|tumor|sarcoma|melanoma|history"),
+                         icd9_exclude=["173*", "V10.83"], rx=r"malignan|neoplasm|cancer|carcinoma|lymphoma|leukemia|myeloma|tumor|sarcoma|melanoma|history|"
+                            r"hodgkin|mesothelioma|plasmacytoma|myelofibrosis|erythremia|heavy chain|mycosis fungoides|"
+                            r"sezary|histiocytosis|letterer|reticuloendotheliosis|macroglobulinemia|mastocytosis|"
+                            r"immunoproliferative|myelodysplastic|hepatoblastoma|cd30-positive|panmyelosis"),
     "ESRD_DX": dict(role="X", icd10=["N18.6", "Z99.2", "Z49*", "Z91.15*", "Z94.0", "T86.1*"],
                     icd9=["585.6", "V45.11", "V45.12", "V56*", "V42.0", "996.81"],
                     rx=r"end stage|dialysis|transplant|dependence on renal|noncompliance"),
     "VHL": dict(role="X", icd10=["Q85.83", "Q85.8"], icd9=["759.6"], rx=r"hippel|phakomatos|hamartos"),
     "TSC": dict(role="X", icd10=["Q85.1"], icd9=["759.5"], rx=r"tuberous"),
     "PKD": dict(role="X", icd10=["Q61.11", "Q61.19", "Q61.2", "Q61.3"], icd9=["753.12", "753.13", "753.14"], rx=r"polycystic"),
-    "CATHETER_ANY": dict(role="X", icd10=["Z93.5*"], icd9=["V44.5*"], rx=r"cystostomy"),          # any one code
+    "CATHETER_ANY": dict(role="X", icd10=["Z93.5*"], icd9=["V44.5*"], rx=r"cystostomy|vesicostomy"),          # any one code
     "CATHETER_REPEAT": dict(role="X", icd10=["Z96.0", "Z46.6", "T83.51*"], icd9=["V53.6", "996.64"],
                             rx=r"urogenital|urinary|catheter"),                                  # >=2 codes >=90 d apart
     "NEUROGENIC_BLADDER": dict(role="X", icd10=["N31*"], icd9=["596.54", "344.61"], rx=r"neurogenic|neuromuscular|bladder"),
@@ -118,7 +121,7 @@ DX = {
     "STONES": dict(role="C", icd10=["N20*", "Z87.442"], icd9=["592*", "V13.01"], rx=r"calcul|stone|urolith"),
     "HIV": dict(role="C", icd10=["B20", "Z21"], icd9=["042"], rx=r"immunodeficiency|HIV"),
     "IMMUNO_DX": dict(role="C", icd10=["D84.821", "Z79.52", "Z79.6*"], icd9=["V58.65", "V87.46", "279.3"],
-                      rx=r"immun|steroid|immunosuppress"),
+                      rx=r"immun|steroid|immunosuppress|long term \(current\) use"),
     "DIABETES": dict(role="C", icd10=["E08*", "E09*", "E10*", "E11*", "E13*"], icd9=["250*"], rx=r"diabet"),
     "HYPERTENSION": dict(role="C", icd10=["I10", "I11*", "I12*", "I13*", "I15*", "I16*"], icd9=["401*", "402*", "403*", "404*", "405*"],
                          rx=r"hypertens"),
@@ -179,7 +182,12 @@ LABS = {
     "CREATININE": dict(loinc=["2160-0", "38483-4"], rx=r"creatinine", range_mgdl=(0.1, 20.0)),
     "HBA1C": dict(loinc=["4548-4", "17856-6"], rx=r"a1c|hemoglobin a1", range=(3.0, 20.0)),
     "BMI": dict(loinc=["39156-5"], rx=r"body mass", range=(12.0, 90.0)),
-    "URINE_CULTURE_LAB": dict(loinc=["630-4"], rx=r"urine", name_search=r"(urine.*culture|culture.*urine)"),
+    # P§5.3 "a LOINC urine-culture measurement found by name": from the F01.4 inventory (2026-11-28 run). Reflex-culture
+    # panels (58077-9, 57019-2, LP402549-2) and virus / mycobacteria cultures are left out. SNOMED codes = O9 proposal.
+    "URINE_CULTURE_LAB": dict(loinc=["630-4", "13315-7", "17970-5", "17971-3", "17972-1", "17973-9", "17974-7",
+                                     "44847-2", "44849-8"],
+                              snomed=["104193001", "104194007", "117010004"],
+                              rx=r"urine", name_search=r"(urine.*culture|culture.*urine)"),
 }
 
 # ---------------------------------------------------------------------------------------------------------
@@ -252,6 +260,17 @@ CROSSWALKS = {          # answer concept_code -> level; unmatched answers are pr
     "sex_at_birth": {"SexAtBirth_Male": "Male", "SexAtBirth_Female": "Female", "SexAtBirth_Intersex": "Other",
                      "SexAtBirth_SexAtBirthNoneOfThese": "Other", "PMI_Skip": "Not answered",
                      "PMI_PreferNotToAnswer": "Not answered"},
+    # Answer codes confirmed in the 2026-11-28 F01.6 inventory. Groupings are a proposal (O10).
+    "education": {"HighestGrade_NeverAttended": "Less than high school", "HighestGrade_OneThroughFour": "Less than high school",
+                  "HighestGrade_FiveThroughEight": "Less than high school",
+                  "HighestGrade_NineThroughEleven": "Less than high school",
+                  "HighestGrade_TwelveOrGED": "High school or GED", "HighestGrade_CollegeOnetoThree": "Some college",
+                  "HighestGrade_CollegeGraduate": "College graduate", "HighestGrade_AdvancedDegree": "Advanced degree",
+                  "PMI_Skip": "Not answered", "PMI_PreferNotToAnswer": "Not answered"},
+    "income": {"AnnualIncome_less10k": "<25k", "AnnualIncome_10k25k": "<25k", "AnnualIncome_25k35k": "25-50k",
+               "AnnualIncome_35k50k": "25-50k", "AnnualIncome_50k75k": "50-100k", "AnnualIncome_75k100k": "50-100k",
+               "AnnualIncome_100k150k": "100-200k", "AnnualIncome_150k200k": "100-200k", "AnnualIncome_more200k": ">=200k",
+               "PMI_Skip": "Not answered", "PMI_PreferNotToAnswer": "Not answered"},
 }
 SKIP_CODES = ["PMI_Skip", "PMI_PreferNotToAnswer", "PMI_DontKnow"]     # kept as "Not answered" (M9)
 PR_ZIP3 = ["006", "007", "009"]                                        # P§11.1 [UNCONFIRMED against USPS]
