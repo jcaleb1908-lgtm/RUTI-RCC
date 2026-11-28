@@ -213,13 +213,16 @@ def build_cdr(seed=7, n=600):
     for q, var in K.SURVEY_ITEMS.items():
         ppi[q] = add(q, {"race_eth": "Race: What Race Ethnicity", "sex_at_birth": "Biological Sex At Birth: Sex At Birth",
                          "education": "Education Level: Highest Grade", "income": "Income: Annual Income",
-                         "smoke_100": "Smoking: 100 Cigs Lifetime", "zip3": "Street Address: PII ZIP"}[var], "PPI", "Observation", "Question", "S")
+                         "smoke_100": "Smoking: 100 Cigs Lifetime", "zip3": "Street Address: PII ZIP",
+                         "insured": "Insurance: Health Insurance", "insurance_type": "Health Insurance: Insurance Type Update"}[var], "PPI", "Observation", "Question", "S")
     for cw in K.CROSSWALKS.values():
         for a in cw:
             if a not in ppi:
                 ppi[a] = add(a, a.split("_")[-1], "PPI", "Observation", "Answer", "S")
     ppi["Hispanic_PuertoRican"] = add("Hispanic_PuertoRican", "Puerto Rican", "PPI", "Observation", "Answer", "S")
     ppi["Smoke_Yes"] = add("100CigsLifetime_Yes", "100 Cigs Lifetime: Yes", "PPI", "Observation", "Answer", "S")
+    for a in K.INSURANCE_GROUPS:
+        ppi[a] = add(a, a.split("_")[-1], "PPI", "Observation", "Answer", "S")
     consent = add("ConsentPII", "Consent PII", "PPI", "Observation", "Module", "S")
     anc.append((consent, consent, 0, 0))
 
@@ -243,6 +246,8 @@ def build_cdr(seed=7, n=600):
         OB.append((next(oid), p, ppi["BiologicalSexAtBirth_SexAtBirth"], T("2018-05-01"),
                    ppi["SexAtBirth_Male" if male else "SexAtBirth_Female"], None))
         OB.append((next(oid), p, ppi["StreetAddress_PIIZIP"], T("2018-05-01"), None, rng.choice(["00612", "10001", "00901"])))
+        OB.append((next(oid), p, ppi["HealthInsurance_InsuranceTypeUpdate"], T("2018-05-01"),
+                   ppi[rng.choice(list(K.INSURANCE_GROUPS))], None))
         OB.append((next(oid), p, ppi["Smoking_100CigsLifetime"], T("2018-05-01"), ppi["Smoke_Yes"] if rng.random() < .3 else None, None))
         # UTI history: index episode 2011-2016, 0-3 further episodes in the year after
         e1 = T("2011-01-01") + pd.Timedelta(days=int(rng.integers(0, 2000)))

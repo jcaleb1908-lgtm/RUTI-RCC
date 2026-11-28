@@ -254,7 +254,16 @@ SURVEY_ITEMS = {        # question concept_code -> variable. [UNCONFIRMED] codes
     "Income_AnnualIncome": "income",
     "Smoking_100CigsLifetime": "smoke_100",
     "StreetAddress_PIIZIP": "zip3",
+    "Insurance_HealthInsurance": "insured",                     # confirmed in F01.6 (2026-11-28)
+    "HealthInsurance_InsuranceTypeUpdate": "insurance_type",    # multi-select; confirmed in F01.6
 }
+# Insurance type (descriptive, P§9.4). Multi-select: the first group in INSURANCE_PRECEDENCE that a person ticked wins.
+INSURANCE_GROUPS = {"InsuranceTypeUpdate_Medicaid": "Medicaid", "InsuranceTypeUpdate_Medicare": "Medicare",
+                    "InsuranceTypeUpdate_Military": "Military or VA", "InsuranceTypeUpdate_VA": "Military or VA",
+                    "InsuranceTypeUpdate_EmployerOrUnion": "Private", "InsuranceTypeUpdate_Purchased": "Private",
+                    "InsuranceTypeUpdate_Indian": "Other", "InsuranceTypeUpdate_OtherHealthPlan": "Other",
+                    "InsuranceTypeUpdate_None": "None"}
+INSURANCE_PRECEDENCE = ["Medicaid", "Medicare", "Military or VA", "Private", "Other", "None"]
 HISPANIC_SUBGROUP_QUESTION_RX = r"hispanic|latino|spanish"     # P§11.1: subgroup item located by name in F01
 BIRTHPLACE_QUESTION_RX = r"born|birthplace|country of birth"
 CROSSWALKS = {          # answer concept_code -> level; unmatched answers are printed by F04 (never silently dropped)
@@ -290,7 +299,10 @@ ADJ_Q1 = ["age_t0", "sex", "t0_year", "smoking", "bmi_cat", "hypertension", "dia
           "education", "income", "race_eth"]                 # + site as stratum (P§9.2)
 ADJ_Q2 = ADJ_Q1 + ["episode_type", "episode_setting", "resistant_org", "pcn_allergy", "egfr_cat"]
 
-TABLE1_VARS = ADJ_Q2 + ["coding_era", "years_t0_to_enrollment", "ehr_years_before_t0", "hispanic", "puerto_rican"]
+TABLE1_VARS = ADJ_Q2 + ["coding_era", "years_t0_to_enrollment", "ehr_years_before_t0", "hispanic", "puerto_rican",
+                        "pr_residence", "insurance", "prophylaxis_before", "hematuria_2y"]
+# Table 1 standardized differences (blind: covariates only): (group, reference) pairs
+SMD_PAIRS = {"Q1": [("recurrent", "single")], "Q2": [("B", "A"), ("C", "A"), ("D", "A")]}
 
 # ---------------------------------------------------------------------------------------------------------
 # RUN SETTINGS

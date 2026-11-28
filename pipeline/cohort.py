@@ -230,6 +230,21 @@ def add_covariates(D, F, q):
         lev = a["answer_code"].map(cw) if cw else a["answer_name"]
         lev = lev.where(~a["answer_code"].isin(K.SKIP_CODES), "Not answered")
         F[var] = F["person_id"].map(pd.Series(lev.values, index=a["person_id"].values).groupby(level=0).first()).fillna("Not answered")
+    # insurance (descriptive): type by precedence; "None" also from "Do you have health insurance? No"
+    it = sv.loc[sv["question_code"].isin([k for k, v in K.SURVEY_ITEMS.items() if v == "insurance_type"])]
+    it = it.assign(g=it["answer_code"].map(K.INSURANCE_GROUPS)).dropna(subset=["g"])
+    rank = {g: i for i, g in enumerate(K.INSURANCE_PRECEDENCE)}
+    best = it.assign(r=it["g"].map(rank)).sort_values("r").groupby("person_id")["g"].first()
+    ins_q = sv.loc[sv["question_code"].isin([k for k, v in K.SURVEY_ITEMS.items() if v == "insured"])]
+    no_ins = ins_q.loc[ins_q["answer_code"].fillna("").str.endswith("_No"), "person_id"].unique()
+    F["insurance"] = F["person_id"].map(best)
+    F.loc[F["insurance"].isna() & F["person_id"].isin(no_ins), "insurance"] = "None"
+    F["insurance"] = F["insurance"].fillna("Not answered")
+    # Puerto Rico residence (P§11.1): ZIP3 at enrollment
+    zq = sv.loc[sv["question_code"].isin([k for k, v in K.SURVEY_ITEMS.items() if v == "zip3"])]
+    z3 = zq.assign(z=zq["value_as_string"].fillna("").str[:3]).groupby("person_id")["z"].first()
+    zz = F["person_id"].map(z3)
+    F["pr_residence"] = np.where(zz.isin(K.PR_ZIP3), "Puerto Rico", np.where(zz.fillna("").str.len().eq(3), "US mainland or other", "No ZIP"))
     # smoking: EHR codes before ref, or survey 100 cigarettes = yes (P§9.4)
     sm_q = [k for k, v in K.SURVEY_ITEMS.items() if v == "smoke_100"]
     sm_yes = sv.loc[sv["question_code"].isin(sm_q) & sv["answer_code"].fillna("").str.endswith("_Yes"), "person_id"]

@@ -21,7 +21,13 @@ D_RCC_SENS = C.load_state("rcc_without_nephroureterectomy")
 EXPO = {"Q1": "q1_group", "Q2": "q2_class"}
 
 
-def table1(F, expo, levels):
+def _smd_bin(p1, p0):
+    d = np.sqrt((p1 * (1 - p1) + p0 * (1 - p0)) / 2)
+    return float((p1 - p0) / d) if d > 0 else 0.0
+
+
+def table1(F, expo, levels, pairs=()):
+    """Counts per level and group, plus standardized differences for each (group, reference) pair (covariates only)."""
     rows = []
     for v in K.TABLE1_VARS:
         if v not in F.columns:
@@ -35,12 +41,20 @@ def table1(F, expo, levels):
                 r[f"n_{g}"] = np.nan
                 r[f"pctl_{g}"] = C.pctl(F.loc[F[expo].eq(g), v])
             r["n_missing_all"] = int(F[v].isna().sum())
+            for g1, g0 in pairs:
+                x1, x0 = (pd.to_numeric(F.loc[F[expo].eq(g), v], errors="coerce").dropna() for g in (g1, g0))
+                sd = np.sqrt((x1.var() + x0.var()) / 2) if len(x1) > 1 and len(x0) > 1 else np.nan
+                r[f"smd_{g1}_vs_{g0}"] = float((x1.mean() - x0.mean()) / sd) if sd and sd > 0 else np.nan
             rows.append(r)
             continue
-        for lev in sorted(s.fillna("Missing").astype(str).unique()):
+        sl = s.fillna("Missing").astype(str)
+        for lev in sorted(sl.unique()):
             r = {"var": v, "level": lev}
             for g in levels:
-                r[f"n_{g}"] = int((F[expo].eq(g) & s.fillna("Missing").astype(str).eq(lev)).sum())
+                r[f"n_{g}"] = int((F[expo].eq(g) & sl.eq(lev)).sum())
+            for g1, g0 in pairs:
+                n1, n0 = int(F[expo].eq(g1).sum()), int(F[expo].eq(g0).sum())
+                r[f"smd_{g1}_vs_{g0}"] = (_smd_bin(r[f"n_{g1}"] / n1, r[f"n_{g0}"] / n0) if n1 and n0 else np.nan)
             rows.append(r)
     return pd.DataFrame(rows)
 
@@ -53,10 +67,13 @@ def run_q(qn):
         C.CFG["footnote_extra"] = (prev + " | " if prev else "") + F.attrs["spec"]
         C.show("flow", f"{qn} cohort flow (masked)", C.flow_mask(flow), counts=["n", "excluded"])
         levels = (["recurrent", "single", "intermediate"] if qn == "Q1" else ["A", "B", "C", "D"])
-        T = table1(F, EXPO[qn], levels)
+        T = table1(F, EXPO[qn], levels, K.SMD_PAIRS[qn])
         cnt = [c for c in T.columns if c.startswith("n_")]
-        C.show("table1", f"{qn} Table 1 by exposure group (masked; no outcome)", T, counts=cnt, group_cols=["var"],
-               max_rows=400)
+        smd_deps = {f"smd_{g1}_vs_{g0}": [f"n_{g1}", f"n_{g0}"] for g1, g0 in K.SMD_PAIRS[qn]}
+        C.show("table1", f"{qn} Table 1 by exposure group with standardized differences (masked; no outcome)", T,
+               counts=cnt, group_cols=["var"], deps=smd_deps, max_rows=500,
+               note="smd = standardized difference vs the reference group, before weighting (|smd| > 0.1 = imbalance); "
+                    "blanked where a count is masked.")
         sizes = F[EXPO[qn]].value_counts().rename_axis("group").rename("n").reset_index()
         C.show("arms", f"{qn} analysed persons per exposure group (no outcome)", sizes, counts=["n"], group_cols=[])
         fu = pd.DataFrame([{"follow_up_years_p25_p50_p75": C.pctl(F["t_years"]),
